@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 project(Stickman)
 
-enable_testing()
-
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -Wall -static-libstdc++")
 set(CMAKE_C_FLAGS_RELEASE "-O3 -march=native -Wall -static-libstdc++")
