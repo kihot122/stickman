@@ -64,6 +64,7 @@ class HelloTriangle
 	VkQueue presentQueue{};
 	VkSwapchainKHR swapChain{};
 	VkSurfaceKHR surface{};
+	VkPipelineLayout pipelineLayout{};
 
 	std::vector<VkImage> swapChainImages;
 	std::vector<VkImageView> swapChainImageViews;
@@ -609,6 +610,17 @@ class HelloTriangle
 		colorBlending.attachmentCount = 1;
 		colorBlending.pAttachments = &colorBlendAttachment;
 
+		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+		
+		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		pipelineLayoutInfo.setLayoutCount = 0;
+		pipelineLayoutInfo.pSetLayouts = nullptr;
+		pipelineLayoutInfo.pushConstantRangeCount = 0;
+		pipelineLayoutInfo.pPushConstantRanges = nullptr;
+
+		if(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
+			throw std::runtime_error("Failed to create pipeline layout!");
+
 		vkDestroyShaderModule(device, vertShaderModule, nullptr);
 		vkDestroyShaderModule(device, fragShaderModule, nullptr);
 	}
@@ -633,6 +645,8 @@ class HelloTriangle
 
 	void cleanup()
 	{
+		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+		
 		for (auto& imageView : swapChainImageViews)
 			vkDestroyImageView(device, imageView, nullptr);
 
