@@ -1,0 +1,12 @@
+*
+
+!.gitignore
+!CMakeLists.txt
+!README.md
+
+!*.cpp
+!*.hpp
+!*.c
+!*.h
+!*.glsl
+!*.sh
