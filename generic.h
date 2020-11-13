@@ -1,15 +1,14 @@
 #pragma once
 #include <iostream>
 #include <vector>
-
-typedef void * PVOID;
-typedef PVOID HANDLE;
+#include <box2d/box2d.h>
 
 class Base{
 private:
-    std::vector<void*> handler_container;
-    virtual int findElement(void* element);
+    std::vector<b2BodyDef> handler_container;
 public:
-    virtual void* getElement(void* element);
-    virtual void addElement(void* element);
+    virtual void tick();
+    virtual int getFeedback();
+    virtual std::vector<uint8_t>* serialize() = 0;
+    virtual b2BodyDef deserialize() = 0;
 };
