@@ -31,7 +31,7 @@ void ctrl_c(int);
 void sendToAllBut(int fd, char * buffer, int count);
 uint16_t readPort(char * txt);
 void setReuseAddr(int sock);
-void recive(int clientFd);
+void receive(int clientFd);
 
 int main(int argc, char ** argv){
 
@@ -71,7 +71,7 @@ int main(int argc, char ** argv){
 		printf("new connection from: %s:%hu (fd: %d)\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port), clientFd);
 		
 
-		threads[w++] = std::thread(recive, clientFd);	
+		threads[w++] = std::thread(receive, clientFd);	
 	}
 	for(int clientFd : clientFds)
 		close(clientFd);
@@ -128,7 +128,7 @@ void sendToAllBut(int fd, char* buffer, int count){
 	
 }
 
-void recive(int clientFd)
+void receive(int clientFd)
 {
 	while(1)
 	{
