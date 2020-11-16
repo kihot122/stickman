@@ -167,7 +167,7 @@ class HelloTriangle
 		createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
 		createInfo.ppEnabledExtensionNames = extensions.data();
 
-		if (enableValidationLayers && !checkValidationLayerSupport())
+		if (enableValidationLayers and !checkValidationLayerSupport())
 			throw std::runtime_error("Validation layers requested not available!");
 
 		VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
