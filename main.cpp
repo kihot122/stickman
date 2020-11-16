@@ -12,8 +12,6 @@
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 
-const bool COLOR_ALPHA_BLEND = false;
-
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback
 (
 	VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -69,13 +67,15 @@ class HelloTriangle
 	VkPipeline graphicsPipeline{};
 	VkCommandPool commandPool{};
 
-	std::vector<VkImage> swapChainImages;
-	std::vector<VkImageView> swapChainImageViews;
-	std::vector<VkFramebuffer> swapChainFramebuffers;
-	std::vector<VkCommandBuffer> commandBuffers;
+	std::vector<VkImage> swapChainImages{};
+	std::vector<VkImageView> swapChainImageViews{};
+	std::vector<VkFramebuffer> swapChainFramebuffers{};
+	std::vector<VkCommandBuffer> commandBuffers{};
 
-	VkSemaphore imageAvailableSemaphore{};
-	VkSemaphore renderFinishedSemaphore{};
+	std::vector<VkSemaphore> imageAvailableSemaphore{};
+	std::vector<VkSemaphore> renderFinishedSemaphore{};
+	std::vector<VkFence> inFlightFences{};
+	std::vector<VkFence> imagesInFlight{};
 
 	VkFormat swapChainImageFormat{};
 	VkExtent2D swapChainExtent{};
@@ -83,8 +83,13 @@ class HelloTriangle
 	const uint32_t WIDTH = 800;
 	const uint32_t HEIGHT = 600;
 
+	const bool COLOR_ALPHA_BLEND = false;
+	const size_t MAX_FRAMES_IN_FLIGHT = 2;
+
 	const std::vector<const char*> validationLayers = { "VK_LAYER_KHRONOS_validation" };
 	const std::vector<const char*> deviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+
+	size_t currentFrame = 0;
 
 #ifdef NDEBUG
 	const bool enableValidationLayers = false;
@@ -776,16 +781,31 @@ class HelloTriangle
 		}
 	}
 
-	void createSemaphores()
+	void createSyncObjects()
 	{
+		imageAvailableSemaphore.resize(MAX_FRAMES_IN_FLIGHT);
+		renderFinishedSemaphore.resize(MAX_FRAMES_IN_FLIGHT);
+		inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+		imagesInFlight.resize(swapChainImages.size(), VK_NULL_HANDLE);
+		
 		VkSemaphoreCreateInfo semaphoreInfo{};
 		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-		if(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphore) != VK_SUCCESS)
-			throw std::runtime_error("Failed to create semaphore.");
+		VkFenceCreateInfo fenceInfo{};
+		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-		if(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphore) != VK_SUCCESS)
-			throw std::runtime_error("Failed to create semaphore.");
+		for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+		{
+			if(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphore[i]) != VK_SUCCESS)
+				throw std::runtime_error("Failed to create semaphore.");
+
+			if(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphore[i]) != VK_SUCCESS)
+				throw std::runtime_error("Failed to create semaphore.");
+
+			if(vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS)
+				throw std::runtime_error("Failed to create fence.");
+		}
 	}
 
 	void initVulkan()
@@ -802,18 +822,24 @@ class HelloTriangle
 		createFramebuffers();
 		createCommandPool();
 		createCommandBuffers();
-		createSemaphores();
+		createSyncObjects();
 	}
 
 	void drawFrame()
 	{
+		vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+
 		uint32_t imageIndex;
-		vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+		vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphore[currentFrame], VK_NULL_HANDLE, &imageIndex);
+
+		if(imagesInFlight[imageIndex] != VK_NULL_HANDLE)
+			vkWaitForFences(device, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
+		imagesInFlight[imageIndex] = inFlightFences[currentFrame];
 
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-		VkSemaphore waitSemaphores[] = {imageAvailableSemaphore};
+		VkSemaphore waitSemaphores[] = {imageAvailableSemaphore[currentFrame]};
 		VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
 		submitInfo.waitSemaphoreCount = 1;
@@ -822,12 +848,14 @@ class HelloTriangle
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
 
-		VkSemaphore signalSemaphores[] = {renderFinishedSemaphore};
+		VkSemaphore signalSemaphores[] = {renderFinishedSemaphore[currentFrame]};
 
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = signalSemaphores;
 
-		if(vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS)
+		vkResetFences(device, 1, &inFlightFences[currentFrame]);
+		
+		if(vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS)
 			throw std::runtime_error("Failed to submit draw command buffer");
 	
 		VkSwapchainKHR swapChains[] = { swapChain };
@@ -841,6 +869,7 @@ class HelloTriangle
 		presentInfo.pImageIndices = &imageIndex;
 
 		vkQueuePresentKHR(presentQueue, &presentInfo);
+		currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
 
 	void mainLoop()
@@ -850,12 +879,19 @@ class HelloTriangle
 			glfwPollEvents();
 			drawFrame();
 		}
+
+		vkDeviceWaitIdle(device);
 	}
 
 	void cleanup()
 	{
-		vkDestroySemaphore(device, renderFinishedSemaphore, nullptr);
-		vkDestroySemaphore(device, imageAvailableSemaphore, nullptr);
+		for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+		{
+			vkDestroySemaphore(device, renderFinishedSemaphore[i], nullptr);
+			vkDestroySemaphore(device, imageAvailableSemaphore[i], nullptr);
+			vkDestroyFence(device, inFlightFences[i], nullptr);
+		}
+		
 		vkDestroyCommandPool(device, commandPool, nullptr);
 		
 		for(auto& framebuffer : swapChainFramebuffers)
