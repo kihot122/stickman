@@ -63,6 +63,10 @@ ClientChatManager::ClientChatManager(std::string IP, std::string Port, std::stri
         throw std::runtime_error("Connection failed.");
 
     freeaddrinfo(resolved);
+
+    size_t size = Nick.size();
+    write(SocketFd, &size, sizeof(size_t));
+    write(SocketFd, Nick.data(), size);
 }
 
 void ClientChatManager::Run()

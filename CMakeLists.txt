@@ -10,7 +10,9 @@ set(CMAKE_C_FLAGS_DEBUG "-std=c17 -march=native -Wall -g")
 find_package(Vulkan REQUIRED)
 find_package(glfw3 REQUIRED)
 
-add_executable(Stickman main.cpp Chat_manager.cpp)
+add_executable(StickmanClient Client.cpp)
+add_executable(StickmanServer Server.cpp)
+add_executable(Testman main.cpp)
 
-target_link_libraries(Stickman ${Vulkan_LIBRARIES})
-target_link_libraries(Stickman glfw)
+target_link_libraries(StickmanClient ${Vulkan_LIBRARIES})
+target_link_libraries(StickmanClient glfw)
