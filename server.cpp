@@ -20,11 +20,13 @@
 #include <stdio.h>
 #include <iostream>
 #include <cmath>
+#include <map>
 
 using namespace std;
 
 mutex mtx;
 int servFd;
+map <int, string> nick;
 
 unordered_set<int> clientFds;
 void ctrl_c(int);
@@ -55,9 +57,11 @@ int main(int argc, char ** argv){
 	if(res) 
 		error(1, errno, "listen failed");
 	
-	int num = 0;
-	std::thread threads[100];
-	int w = 0;
+
+	//int num = 0;
+	//std::thread threads[100];
+	std::vector<thread*> threads;
+	//int w = 0;
 	while(true){
 		sockaddr_in clientAddr{0};
 		socklen_t clientAddrSize = sizeof(clientAddr);
@@ -67,16 +71,32 @@ int main(int argc, char ** argv){
 			error(1, errno, "accept failed");
 		
 		clientFds.insert(clientFd);
+		size_t nick_size;
+		string s;
+		mtx.lock();
+		if(read(clientFd, &nick_size, sizeof(size_t)) == -1) 
+			return -1;
+		mtx.unlock();
+		s.resize(nick_size);
+		mtx.lock();
+		if(read(clientFd, const_cast<char*>(s.data()), nick_size) == -1)
+			return -1;
+		mtx.unlock();
+		nick.insert_or_assign(clientFd, s);
 		
 		printf("new connection from: %s:%hu (fd: %d)\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port), clientFd);
 		
-
-		threads[w++] = std::thread(receive, clientFd);	
+		threads.push_back(new thread(receive, clientFd));
+		//threads[w++] = std::thread(receive, clientFd);	
 	}
 	for(int clientFd : clientFds)
 		close(clientFd);
-	for(int i = 0; i < num; i++)
-		threads[i].join();
+	/*for(int i = 0; i < num; i++)
+		threads[i].join();*/
+	for(auto &t : threads)
+	{
+		t->join();
+	}
 }
 
 uint16_t readPort(char * txt){
@@ -104,18 +124,26 @@ void ctrl_c(int){
 
 void sendToAllBut(int fd, char* buffer, int count){
 	int res;
-	string s = to_string(fd) + ": " + buffer + "\n";
+	/*string s = to_string(fd) + ": " + buffer + "\n";
 	char temp[s.length()];
 	strcpy(temp, s.c_str());
-	count += (ceil(fd/10) + 3);
+	count += (ceil(fd/10) + 3);*/
+
+	//buffer = (string)nick[fd] + ": " + buffer;
+
+	string temp = nick[fd]+ ": " + string(buffer);
+	count = temp.size();
 
 	decltype(clientFds) bad;
 	
 	for(int clientFd : clientFds){
 		if(clientFd == fd) continue;
-		int name = write(clientFd, &fd, sizeof(int));
 		mtx.lock();
-		res = write(clientFd, temp, count);
+		if(write(clientFd, &fd, sizeof(int)) == -1)
+			return;
+		mtx.unlock();
+		mtx.lock();
+		res = write(clientFd, temp.data(), count);
 		mtx.unlock();
 		if(res!=count)
 			bad.insert(clientFd);
@@ -132,9 +160,14 @@ void receive(int clientFd)
 {
 	while(1)
 	{
-		char buffer[255];
-		int count = read(clientFd, buffer, 255);
-		printf("tak");
+		size_t buff_size;
+		mtx.lock();
+		int tmp = read(clientFd, &buff_size, sizeof(size_t));
+		mtx.unlock();
+		char buffer[buff_size];
+		mtx.lock();
+		int count = read(clientFd, buffer, buff_size);
+		mtx.unlock();
 		if(count < 1) {
 			printf("removing %d\n", clientFd);
 			clientFds.erase(clientFd);
