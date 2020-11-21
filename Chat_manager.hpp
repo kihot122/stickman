@@ -86,10 +86,10 @@ private:
     std::unordered_set<int> clientFds;
     long int port;
 
-    void sendToAllBut(int fd, char * buffer, int count);
+    static void sendToAllBut(int fd, char * buffer, int count, std::unordered_set<int> clientFds, std::mutex &mtx, std::map <int, std::string> nick);
     uint16_t readPort(char * txt);
     void setReuseAddr(int sock);
-    static void receive(int clientFd);
+    static void receive(int clientFd, std::unordered_set<int> clientFds, std::mutex &mtx, std::map <int, std::string> nick);
 public:
     ServerChatManager(char* port_number);
     int Run();  
