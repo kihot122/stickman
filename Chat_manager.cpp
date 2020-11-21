@@ -96,6 +96,8 @@ void ServerChatManager::ctrl_c(int)
 
 int ServerChatManager::Run()
 {
+	using namespace std::chrono_literals;
+	
     servFd = socket(AF_INET, SOCK_STREAM, 0);
 	if(servFd == -1) 
 		error(1, errno, "socket failed");
@@ -158,7 +160,7 @@ int ServerChatManager::Run()
 				threads.erase(iter);
 				break;
 			}
-		//std::this_thread::sleep_for();
+		std::this_thread::sleep_for(100ms);
 	}
 	
 	
@@ -173,7 +175,7 @@ int ServerChatManager::Run()
 
 
 
-void ServerChatManager::sendToAllBut(int fd, char * buffer, int count)
+void ServerChatManager::sendToAllBut(int fd, char * buffer, int count, std::unordered_set<int> clientFds, std::mutex &mtx, std::map <int, std::string> nick)
 {
     int res;
 	std::string temp = nick[fd]+ ": " + std::string(buffer);
@@ -215,7 +217,7 @@ void ServerChatManager::setReuseAddr(int sock)
 	if(res) 
 		error(1,errno, "setsockopt failed");
 }
-void ServerChatManager::receive(int clientFd)
+void ServerChatManager::receive(int clientFd, std::unordered_set<int> clientFds, std::mutex &mtx, std::map <int, std::string> nick)
 {
     while(1)
 	{
@@ -225,12 +227,14 @@ void ServerChatManager::receive(int clientFd)
 		int count = read(clientFd, buffer, buff_size);
 		if(count < 1) {
 			printf("removing %d\n", clientFd);
+			mtx.lock();
 			clientFds.erase(clientFd);
+			mtx.unlock();
 			close(clientFd);
 			break;
 		}
 		else {
-			sendToAllBut(clientFd, buffer, count);
+			sendToAllBut(clientFd, buffer, count, clientFds, mtx, nick);
 		}
 	}
 }
