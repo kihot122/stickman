@@ -12,7 +12,7 @@ find_package(glfw3 REQUIRED)
 
 add_executable(StickmanClient Client.cpp)
 add_executable(StickmanServer Server.cpp)
-add_executable(Testman main.cpp)
+add_executable(Testman main.cpp Chat_manager.cpp)
 
 target_link_libraries(StickmanClient ${Vulkan_LIBRARIES})
 target_link_libraries(StickmanClient glfw)

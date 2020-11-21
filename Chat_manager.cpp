@@ -153,6 +153,7 @@ int ServerChatManager::Run()
 	{
 		t->join();
 	}
+	return 0;
 }
 
 
