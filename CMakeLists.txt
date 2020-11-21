@@ -17,3 +17,4 @@ add_executable(Testman main.cpp Chat_manager.cpp)
 
 target_link_libraries(StickmanClient ${Vulkan_LIBRARIES})
 target_link_libraries(StickmanClient glfw)
+target_link_libraries(Testman pthread)
