@@ -9,6 +9,7 @@ set(CMAKE_C_FLAGS_DEBUG "-std=c17 -march=native -Wall -g")
 
 find_package(Vulkan REQUIRED)
 find_package(glfw3 REQUIRED)
+find_package(glm REQUIRED)
 
 add_executable(StickmanClient Client.cpp)
 add_executable(StickmanServer Server.cpp)
