@@ -1,4 +1,6 @@
+#include "Chat_manager.hpp"
+
 int main(int argc, char ** argv)
 {
-    return 0;
+    ServerChatManager s("6503");
 }

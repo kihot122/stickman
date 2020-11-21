@@ -147,6 +147,21 @@ int ServerChatManager::Run()
 	}
 	for(int clientFd : clientFds)
 		close(clientFd);
+	
+	while(true)
+	{
+		for(auto iter = threads.begin(); iter != threads.end(); iter++)
+			if((*iter)->joinable())
+			{
+				(*iter)->join();
+				delete (*iter);
+				threads.erase(iter);
+				break;
+			}
+		//std::this_thread::sleep_for();
+	}
+	
+	
 	/*for(int i = 0; i < num; i++)
 		threads[i].join();*/
 	for(auto &t : threads)
@@ -205,13 +220,9 @@ void ServerChatManager::receive(int clientFd)
     while(1)
 	{
 		size_t buff_size;
-		mtx.lock();
 		int tmp = read(clientFd, &buff_size, sizeof(size_t));
-		mtx.unlock();
 		char buffer[buff_size];
-		mtx.lock();
 		int count = read(clientFd, buffer, buff_size);
-		mtx.unlock();
 		if(count < 1) {
 			printf("removing %d\n", clientFd);
 			clientFds.erase(clientFd);

@@ -80,7 +80,7 @@ class ClientChatManager
 class ServerChatManager
 {
 private:
-    std::mutex mtx;
+    static std::mutex mtx;
     int servFd;
     std::map <int, std::string> nick;
     std::unordered_set<int> clientFds;
@@ -89,7 +89,7 @@ private:
     void sendToAllBut(int fd, char * buffer, int count);
     uint16_t readPort(char * txt);
     void setReuseAddr(int sock);
-    void receive(int clientFd);
+    static void receive(int clientFd);
 public:
     ServerChatManager(char* port_number);
     int Run();  
