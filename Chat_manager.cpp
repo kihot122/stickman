@@ -1,4 +1,3 @@
-#include <thread>
 #include <chrono>
 #include <vector>
 #include <iostream>
@@ -9,15 +8,11 @@
 
 void ClientChatManager::Send(SharedQueue<std::string> *pQueue, int SocketFd)
 {
-	using namespace std::chrono_literals;
-
 	std::string s;
 	size_t size;
 
 	while (true)
 	{
-		std::this_thread::sleep_for(100ms);
-
 		s = pQueue->Pop();
 		size = s.size();
 
@@ -30,15 +25,11 @@ void ClientChatManager::Send(SharedQueue<std::string> *pQueue, int SocketFd)
 
 void ClientChatManager::Receive(SharedQueue<std::string> *pQueue, int SocketFd)
 {
-	using namespace std::chrono_literals;
-
 	std::string s;
 	size_t size;
 
 	while (true)
 	{
-		std::this_thread::sleep_for(100ms);
-
 		if (read(SocketFd, &size, sizeof(size)) == -1)
 			return;
 		s.resize(size);
