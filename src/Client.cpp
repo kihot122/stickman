@@ -606,8 +606,8 @@ class HelloTriangle
 
 	void createGraphicsPipeline()
 	{
-		auto vertShaderCode = readFile("vertex.spv");
-		auto fragShaderCode = readFile("fragment.spv");
+		auto vertShaderCode = readFile("../data/vertex.spv");
+		auto fragShaderCode = readFile("../data/fragment.spv");
 
 		VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
 		VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);

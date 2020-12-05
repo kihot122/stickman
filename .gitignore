@@ -1,8 +1,11 @@
 *
+!/src**
 
 !.gitignore
+!.gitattributes
 !CMakeLists.txt
 !README.md
+!LICENSE
 
 !*.cpp
 !*.hpp
