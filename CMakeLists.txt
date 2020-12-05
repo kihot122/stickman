@@ -17,3 +17,7 @@ target_link_libraries(Client ${Vulkan_LIBRARIES} glfw)
 target_link_libraries(Testman pthread)
 
 add_custom_command(TARGET Client POST_BUILD COMMAND ${CMAKE_SOURCE_DIR}/src/script/compileshader.sh WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+add_custom_command(TARGET Client POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:Client> ${CMAKE_SOURCE_DIR}/bin)
+add_custom_command(TARGET Server POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:Server> ${CMAKE_SOURCE_DIR}/bin)
+add_custom_command(TARGET Testman POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:Testman> ${CMAKE_SOURCE_DIR}/bin)
