@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
 project(Stickman)
 
+file(MAKE_DIRECTORY bin data)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS_RELEASE "-std=c++20 -O3 -march=native -flto -Wall -static-libstdc++ -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "-std=c++20 -march=native -Wall -g")
