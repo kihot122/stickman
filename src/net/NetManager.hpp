@@ -1,28 +1,33 @@
-#include <cstdint>
-#include <string>
+#pragma once
 
+#include <thread>
+#include <mutex>
+#include <map>
 #include "../aux/concurrentqueue.hpp"
-#include "TCPManager.hpp"
-#include "UDPManager.hpp"
 #include "GamePacket.hpp"
+#include "GameCommand.hpp"
 
-class NetServer
+class NetManager
 {
+    moodycamel::ConcurrentQueue<GamePacket *> SendQueue;
+    moodycamel::ConcurrentQueue<GamePacket *> ReceiveQueue;
+    moodycamel::ConcurrentQueue<GameCommand *> CommandQueue;
+
+    std::string Port;
+    std::vector<std::thread *> ReceiveThreadPool;
+
+    void Listen();
+    void Send();
+    void Receive(int SocketFd);
+
 public:
-    NetServer(std::string TcpPort, std::string UdpPort);
-    ~NetServer();
+    NetManager(std::string Port);
+    ~NetManager();
 
     void Run();
-};
+    void Push(GamePacket *Packet);
+    std::vector<GamePacket *> Pull();
 
-class NetClient
-{
-    moodycamel::ConcurrentQueue<GamePacket> SendQueue;
-    moodycamel::ConcurrentQueue<GamePacket> ReceiveQueue;
-
-public:
-    NetClient(std::string Address, std::string Port);
-    ~NetClient();
-
-    void Run();
+    void Connect(std::string Address, std::string Port);
+    void Disconnect(std::string Address);
 };

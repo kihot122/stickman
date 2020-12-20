@@ -4,16 +4,22 @@ project(Stickman)
 file(MAKE_DIRECTORY bin data)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_FLAGS_RELEASE "-std=c++20 -O3 -march=native -flto -Wall -Wextra -pedantic -static-libstdc++ -DNDEBUG")
-set(CMAKE_CXX_FLAGS_DEBUG "-std=c++20 -march=native -Wall -Wextra -pedantic -g")
+set(CMAKE_CXX_FLAGS_RELEASE "-std=c++20 -O3 -march=native -flto -Wall -static-libstdc++ -static-libgcc -DNDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-std=c++20 -march=native -Wall -g")
 
 find_package(Vulkan REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(glm REQUIRED)
 
-add_executable(Client src/Client.cpp)
-add_executable(Server src/Server.cpp)
-add_executable(Testman src/Testman.cpp)
+add_executable(Client 
+    src/Client.cpp)
+
+add_executable(Server 
+    src/Server.cpp)
+
+add_executable(Testman 
+    src/Testman.cpp 
+    src/net/NetManager.cpp)
 
 target_link_libraries(Client ${Vulkan_LIBRARIES} glfw)
 target_link_libraries(Testman pthread)

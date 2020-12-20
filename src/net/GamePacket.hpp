@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
+#include <vector>
 
 enum class GamePacketType : uint8_t
 {
@@ -14,6 +16,6 @@ enum class GamePacketType : uint8_t
 struct GamePacket
 {
     GamePacketType Type;
-    uint32_t Length;
-    uint8_t *Data;
+    int Socket;
+    std::vector<uint8_t> Data;
 };
