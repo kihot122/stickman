@@ -56,6 +56,7 @@ void NetManager::Send()
 
             write(Packet->Socket, Data, Size);
 
+            delete[] Data;
             delete Packet;
         }
     }
