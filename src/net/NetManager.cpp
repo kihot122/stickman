@@ -47,11 +47,14 @@ void NetManager::Send()
 
         if (SendQueue.try_dequeue(Packet))
         {
-            uint64_t Size = Packet->Data.size();
+            uint64_t Size = sizeof(GamePacketType) + sizeof(uint64_t) + Packet->Data.size();
+            uint8_t* Data = new uint8_t[Size];
+            
+            std::memcpy(Data, &Packet->Type, sizeof(GamePacketType));
+            std::memcpy(Data + sizeof(GamePacketType), &static_cast<const uint64_t&>(Packet->Data.size()), sizeof(uint64_t));
+            std::memcpy(Data + sizeof(GamePacketType) + sizeof(uint64_t), Packet->Data.data(), Packet->Data.size());
 
-            write(Packet->Socket, &Size, sizeof(uint64_t));
-            write(Packet->Socket, &Packet->Type, sizeof(GamePacketType));
-            write(Packet->Socket, Packet->Data.data(), Packet->Data.size());
+            write(Packet->Socket, Data, Size);
 
             delete Packet;
         }
@@ -65,12 +68,12 @@ void NetManager::Receive(int SocketFd)
     while (true)
     {
         GamePacket *Packet = new GamePacket;
-
-        read(SocketFd, &Size, sizeof(uint64_t));
-        Packet->Data.resize(Size);
         Packet->Socket = SocketFd;
 
         read(SocketFd, &Packet->Type, sizeof(GamePacketType));
+        read(SocketFd, &Size, sizeof(uint64_t));
+        Packet->Data.resize(Size);
+        
         read(SocketFd, Packet->Data.data(), sizeof(Size));
 
         ReceiveQueue.enqueue(Packet);
