@@ -12,6 +12,9 @@ class NetManager
     moodycamel::ConcurrentQueue<GamePacket *> SendQueue;
     moodycamel::ConcurrentQueue<GamePacket *> ReceiveQueue;
     moodycamel::ConcurrentQueue<GameCommand *> CommandQueue;
+    
+    moodycamel::ConcurrentQueue<int> SocketsNew;
+    moodycamel::ConcurrentQueue<int> SocketsDel;
 
     std::string Port;
     std::vector<std::thread *> ReceiveThreadPool;
@@ -27,6 +30,9 @@ public:
     void Run();
     void Push(GamePacket *Packet);
     std::vector<GamePacket *> Pull();
+
+    int GetSocketNew();
+    int GetSocketDel();
 
     void Connect(std::string Address, std::string Port);
     void Disconnect(std::string Address);

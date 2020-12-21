@@ -32,6 +32,7 @@ void NetManager::Listen()
             continue;
         }
 
+        SocketsNew.enqueue(Result);
         ReceiveThreadPool.push_back(new std::thread([this, Result] { this->Receive(Result); }));
     }
 }
@@ -48,10 +49,10 @@ void NetManager::Send()
         if (SendQueue.try_dequeue(Packet))
         {
             uint64_t Size = sizeof(GamePacketType) + sizeof(uint64_t) + Packet->Data.size();
-            uint8_t* Data = new uint8_t[Size];
-            
+            uint8_t *Data = new uint8_t[Size];
+
             std::memcpy(Data, &Packet->Type, sizeof(GamePacketType));
-            std::memcpy(Data + sizeof(GamePacketType), &static_cast<const uint64_t&>(Packet->Data.size()), sizeof(uint64_t));
+            std::memcpy(Data + sizeof(GamePacketType), &static_cast<const uint64_t &>(Packet->Data.size()), sizeof(uint64_t));
             std::memcpy(Data + sizeof(GamePacketType) + sizeof(uint64_t), Packet->Data.data(), Packet->Data.size());
 
             write(Packet->Socket, Data, Size);
@@ -74,7 +75,7 @@ void NetManager::Receive(int SocketFd)
         read(SocketFd, &Packet->Type, sizeof(GamePacketType));
         read(SocketFd, &Size, sizeof(uint64_t));
         Packet->Data.resize(Size);
-        
+
         read(SocketFd, Packet->Data.data(), sizeof(Size));
 
         ReceiveQueue.enqueue(Packet);
@@ -121,6 +122,7 @@ void NetManager::Run()
 
                     freeaddrinfo(resolved);
 
+                    SocketsNew.enqueue(Result);
                     ReceiveThreadPool.push_back(new std::thread([this, Result] { this->Receive(Result); }));
 
                     break;
@@ -147,6 +149,24 @@ std::vector<GamePacket *> NetManager::Pull()
     size_t ActualSize = ReceiveQueue.try_dequeue_bulk(BulkData.data(), BulkData.size());
     BulkData.resize(ActualSize);
     return BulkData;
+}
+
+int NetManager::GetSocketNew()
+{
+    int Socket;
+    if (SocketsNew.try_dequeue(Socket))
+        return Socket;
+
+    return -1;
+}
+
+int NetManager::GetSocketDel()
+{
+    int Socket;
+    if (SocketsDel.try_dequeue(Socket))
+        return Socket;
+
+    return -1;
 }
 
 void NetManager::Connect(std::string Address, std::string Port)
