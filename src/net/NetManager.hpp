@@ -26,6 +26,10 @@ class NetManager
     std::map<int, std::thread *> ReceiveThreadPool;
     std::map<int, std::atomic<bool>> ReceiveThreadPoolFlag;
     std::mutex ReceiveThreadPoolLock;
+    std::mutex ReadyUp;
+
+    int ListenSocketFd;
+    bool ThreadSendClose;
 
     void Listen();
     void Send();

@@ -34,7 +34,9 @@ int main()
 
         std::this_thread::sleep_for(1s);
 
-        Manager.Disconnect(conn);
+        Manager.~NetManager();
+
+        // Manager.Disconnect(conn);
 
         while (true)
         {

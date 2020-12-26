@@ -7,6 +7,7 @@ enum class GameCommandType : uint8_t
 {
     NET_CONN,
     NET_DISCONN,
+    NET_SHUTDOWN,
 };
 
 struct GameCommand
@@ -33,5 +34,13 @@ struct GameCommandNetDisconnect : public GameCommand
     GameCommandNetDisconnect(int SocketFd) : SocketFd(SocketFd)
     {
         Type = GameCommandType::NET_DISCONN;
+    }
+};
+
+struct GameCommandNetShutdown : public GameCommand
+{
+    GameCommandNetShutdown()
+    {
+        Type = GameCommandType::NET_SHUTDOWN;
     }
 };

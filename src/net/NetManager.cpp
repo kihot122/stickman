@@ -21,6 +21,10 @@ void NetManager::Listen()
     if (listen(SocketFd, 16))
         throw std::runtime_error("Unable to listen on port.");
 
+    ListenSocketFd = SocketFd;
+
+    ReadyUp.unlock();
+
     while (true)
     {
         sockaddr_in ClientAddress{};
@@ -29,8 +33,8 @@ void NetManager::Listen()
         int Result = accept(SocketFd, reinterpret_cast<sockaddr *>(&ClientAddress), &ClientAddressSize);
         if (Result == -1)
         {
-            std::cerr << "Error accepting new connection.\n";
-            continue;
+            std::cout << "Error" << errno;
+            break;
         }
 
         SocketsNew.enqueue(Result);
@@ -49,6 +53,9 @@ void NetManager::Send()
 
     while (true)
     {
+        if (ThreadSendClose)
+            break;
+
         std::this_thread::sleep_for(1ms);
 
         if (SendQueue.try_dequeue(Packet))
@@ -96,6 +103,9 @@ void NetManager::Receive(int SocketFd)
 
 NetManager::NetManager(std::string Port) : Port(Port)
 {
+    ThreadSendClose = false;
+    ReadyUp.lock();
+
     ThreadListen = new std::thread([this] { this->Listen(); });
     ThreadSend = new std::thread([this] { this->Send(); });
     ThreadRun = new std::thread([this] { this->Run(); });
@@ -103,6 +113,9 @@ NetManager::NetManager(std::string Port) : Port(Port)
 
 NetManager::~NetManager()
 {
+    CommandQueue.enqueue(new GameCommandNetShutdown());
+    ThreadRun->join();
+    delete ThreadRun;
 }
 
 void NetManager::Run()
@@ -157,6 +170,44 @@ void NetManager::Run()
 
                     break;
                 }
+                case GameCommandType::NET_SHUTDOWN:
+                {
+                    GameCommandNetShutdown *RealCommand = static_cast<GameCommandNetShutdown *>(Command);
+
+                    ThreadSendClose = true;
+                    ThreadSend->join();
+                    delete ThreadSend;
+
+                    shutdown(ListenSocketFd, SHUT_RDWR);
+                    close(ListenSocketFd);
+                    ThreadListen->join();
+                    delete ThreadListen;
+
+                    for (auto &Pair : ReceiveThreadPool)
+                    {
+                        shutdown(Pair.first, SHUT_RDWR);
+                        close(Pair.first);
+
+                        Pair.second->join();
+                        delete Pair.second;
+                    }
+                    ReceiveThreadPool.clear();
+                    ReceiveThreadPoolFlag.clear();
+
+                    GamePacket *Temp;
+                    while (SendQueue.try_dequeue(Temp))
+                        delete Temp;
+
+                    while (ReceiveQueue.try_dequeue(Temp))
+                        delete Temp;
+
+                    GameCommand *Cmd;
+                    while (CommandQueue.try_dequeue(Cmd))
+                        delete Cmd;
+
+                    delete RealCommand;
+                    return;
+                }
             }
 
             delete Command;
@@ -166,6 +217,8 @@ void NetManager::Run()
         {
             if (iter->second)
             {
+                SocketsDel.enqueue(iter->first);
+
                 ReceiveThreadPool[iter->first]->join();
                 delete ReceiveThreadPool[iter->first];
 
