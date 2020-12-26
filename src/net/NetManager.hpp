@@ -3,6 +3,8 @@
 #include <thread>
 #include <mutex>
 #include <map>
+#include <atomic>
+
 #include "../aux/concurrentqueue.hpp"
 #include "GamePacket.hpp"
 #include "GameCommand.hpp"
@@ -12,12 +14,18 @@ class NetManager
     moodycamel::ConcurrentQueue<GamePacket *> SendQueue;
     moodycamel::ConcurrentQueue<GamePacket *> ReceiveQueue;
     moodycamel::ConcurrentQueue<GameCommand *> CommandQueue;
-    
+
     moodycamel::ConcurrentQueue<int> SocketsNew;
     moodycamel::ConcurrentQueue<int> SocketsDel;
 
+    std::thread *ThreadListen;
+    std::thread *ThreadSend;
+    std::thread *ThreadRun;
+
     std::string Port;
-    std::vector<std::thread *> ReceiveThreadPool;
+    std::map<int, std::thread *> ReceiveThreadPool;
+    std::map<int, std::atomic<bool>> ReceiveThreadPoolFlag;
+    std::mutex ReceiveThreadPoolLock;
 
     void Listen();
     void Send();
@@ -35,5 +43,5 @@ public:
     int GetSocketDel();
 
     void Connect(std::string Address, std::string Port);
-    void Disconnect(std::string Address);
+    void Disconnect(int SocketFd);
 };

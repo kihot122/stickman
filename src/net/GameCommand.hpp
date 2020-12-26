@@ -25,3 +25,13 @@ struct GameCommandNetConnect : public GameCommand
         Type = GameCommandType::NET_CONN;
     }
 };
+
+struct GameCommandNetDisconnect : public GameCommand
+{
+    int SocketFd;
+
+    GameCommandNetDisconnect(int SocketFd) : SocketFd(SocketFd)
+    {
+        Type = GameCommandType::NET_DISCONN;
+    }
+};

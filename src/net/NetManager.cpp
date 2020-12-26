@@ -4,6 +4,7 @@
 #include <iostream>
 #include <unistd.h>
 #include <netdb.h>
+
 #include "NetManager.hpp"
 
 void NetManager::Listen()
@@ -33,7 +34,11 @@ void NetManager::Listen()
         }
 
         SocketsNew.enqueue(Result);
-        ReceiveThreadPool.push_back(new std::thread([this, Result] { this->Receive(Result); }));
+
+        ReceiveThreadPoolLock.lock();
+        ReceiveThreadPoolFlag.emplace(Result, false);
+        ReceiveThreadPool.emplace(Result, new std::thread([this, Result] { this->Receive(Result); }));
+        ReceiveThreadPoolLock.unlock();
     }
 }
 
@@ -66,30 +71,42 @@ void NetManager::Send()
 void NetManager::Receive(int SocketFd)
 {
     uint64_t Size;
+    GamePacket *Packet;
 
     while (true)
     {
-        GamePacket *Packet = new GamePacket;
+        Packet = new GamePacket;
         Packet->Socket = SocketFd;
 
-        read(SocketFd, &Packet->Type, sizeof(GamePacketType));
-        read(SocketFd, &Size, sizeof(uint64_t));
+        if (read(SocketFd, &Packet->Type, sizeof(GamePacketType)) <= 0)
+            break;
+        if (read(SocketFd, &Size, sizeof(uint64_t)) <= 0)
+            break;
         Packet->Data.resize(Size);
 
-        read(SocketFd, Packet->Data.data(), sizeof(Size));
+        if (read(SocketFd, Packet->Data.data(), sizeof(Size)) <= 0)
+            break;
 
         ReceiveQueue.enqueue(Packet);
     }
+
+    delete Packet;
+    ReceiveThreadPoolFlag[SocketFd] = true;
 }
 
-NetManager::NetManager(std::string Port) : Port(Port) {}
-NetManager::~NetManager() {}
+NetManager::NetManager(std::string Port) : Port(Port)
+{
+    ThreadListen = new std::thread([this] { this->Listen(); });
+    ThreadSend = new std::thread([this] { this->Send(); });
+    ThreadRun = new std::thread([this] { this->Run(); });
+}
+
+NetManager::~NetManager()
+{
+}
 
 void NetManager::Run()
 {
-    std::thread ThreadListen = std::thread([this] { this->Listen(); });
-    std::thread ThreadSend = std::thread([this] { this->Send(); });
-
     using namespace std::chrono_literals;
 
     while (true)
@@ -123,17 +140,43 @@ void NetManager::Run()
                     freeaddrinfo(resolved);
 
                     SocketsNew.enqueue(Result);
-                    ReceiveThreadPool.push_back(new std::thread([this, Result] { this->Receive(Result); }));
+
+                    ReceiveThreadPoolLock.lock();
+                    ReceiveThreadPoolFlag.emplace(Result, false);
+                    ReceiveThreadPool.emplace(Result, new std::thread([this, Result] { this->Receive(Result); }));
+                    ReceiveThreadPoolLock.unlock();
 
                     break;
                 }
                 case GameCommandType::NET_DISCONN:
                 {
+                    GameCommandNetDisconnect *RealCommand = static_cast<GameCommandNetDisconnect *>(Command);
+
+                    shutdown(RealCommand->SocketFd, SHUT_RDWR);
+                    close(RealCommand->SocketFd);
+
                     break;
                 }
             }
 
             delete Command;
+        }
+
+        for (auto iter = ReceiveThreadPoolFlag.begin(); iter != ReceiveThreadPoolFlag.end();)
+        {
+            if (iter->second)
+            {
+                ReceiveThreadPool[iter->first]->join();
+                delete ReceiveThreadPool[iter->first];
+
+                ReceiveThreadPoolLock.lock();
+                ReceiveThreadPool.erase(iter->first);
+                iter = ReceiveThreadPoolFlag.erase(iter);
+                ReceiveThreadPoolLock.unlock();
+
+                continue;
+            }
+            iter++;
         }
     }
 }
@@ -174,6 +217,7 @@ void NetManager::Connect(std::string Address, std::string Port)
     CommandQueue.enqueue(new GameCommandNetConnect(Address, Port));
 }
 
-void NetManager::Disconnect(std::string Address)
+void NetManager::Disconnect(int SocketFd)
 {
+    CommandQueue.enqueue(new GameCommandNetDisconnect(SocketFd));
 }
