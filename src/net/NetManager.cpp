@@ -109,10 +109,14 @@ NetManager::NetManager(std::string Port) : Port(Port)
     ThreadListen = new std::thread([this] { this->Listen(); });
     ThreadSend = new std::thread([this] { this->Send(); });
     ThreadRun = new std::thread([this] { this->Run(); });
+
+    ReadyUp.lock();
 }
 
 NetManager::~NetManager()
 {
+    ReadyUp.unlock();
+
     CommandQueue.enqueue(new GameCommandNetShutdown());
     ThreadRun->join();
     delete ThreadRun;
