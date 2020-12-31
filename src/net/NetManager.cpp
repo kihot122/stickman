@@ -67,7 +67,8 @@ void NetManager::Send()
             std::memcpy(Data + sizeof(GamePacketType), &static_cast<const uint64_t &>(Packet->Data.size()), sizeof(uint64_t));
             std::memcpy(Data + sizeof(GamePacketType) + sizeof(uint64_t), Packet->Data.data(), Packet->Data.size());
 
-            write(Packet->Socket, Data, Size);
+            if (write(Packet->Socket, Data, Size) <= 0)
+                std::cout << "Error" << errno;
 
             delete[] Data;
             delete Packet;
