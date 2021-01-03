@@ -115,7 +115,7 @@ class HelloTriangle
 		RenderModel(const std::vector<Vertex> &Vertices, const std::vector<uint16_t> &Indices)
 			: Vertices(Vertices), Indices(Indices) {}
 
-		RenderModel(){}
+		RenderModel() {}
 	};
 
 	struct RenderTarget
@@ -129,6 +129,7 @@ class HelloTriangle
 		std::vector<VkBuffer> UniformBuffer;
 
 		RenderTarget(uint16_t ModelID) : ModelID(ModelID) {}
+		RenderTarget() : ModelID(0) {}
 	};
 
 	GLFWwindow *window = nullptr;
@@ -186,6 +187,7 @@ class HelloTriangle
 	std::map<uint16_t, RenderTarget> mRenderTargets{};
 
 	bool mRenderModelsDirty = false;
+	bool mRenderTargetsDirty = false;
 
 #ifdef NDEBUG
 	const bool enableValidationLayers = false;
@@ -301,13 +303,58 @@ class HelloTriangle
 			createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, Target.UniformBuffer[i], Target.UniformDeviceMemory[i]);
 	}
 
+	void CreateDescriptorSets(RenderTarget &Target)
+	{
+		std::vector<VkDescriptorSetLayout> layouts(swapChainImages.size(), descriptorSetLayout);
+
+		VkDescriptorSetAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		allocInfo.descriptorPool = descriptorPool;
+		allocInfo.descriptorSetCount = static_cast<uint32_t>(swapChainImages.size());
+		allocInfo.pSetLayouts = layouts.data();
+
+		Target.UniformDescriptorSet.resize(swapChainImages.size());
+
+		if (vkAllocateDescriptorSets(device, &allocInfo, Target.UniformDescriptorSet.data()) != VK_SUCCESS)
+			throw std::runtime_error("Failed to allocate descriptor sets.");
+
+		for (size_t i = 0; i < swapChainImages.size(); i++)
+		{
+			VkDescriptorBufferInfo bufferInfo{};
+			bufferInfo.buffer = Target.UniformBuffer[i];
+			bufferInfo.offset = 0;
+			bufferInfo.range = sizeof(UniformBufferObject);
+
+			VkWriteDescriptorSet descriptorWrite{};
+			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrite.dstSet = Target.UniformDescriptorSet[i];
+			descriptorWrite.dstBinding = 0;
+			descriptorWrite.dstArrayElement = 0;
+			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			descriptorWrite.descriptorCount = 1;
+			descriptorWrite.pBufferInfo = &bufferInfo;
+
+			vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+		}
+	}
+
 	void RenderTargetCreate(uint16_t ID, uint16_t ModelID)
 	{
 		RenderTarget T(ModelID);
 
-		// CreateUniformBuffers(T);
+		CreateUniformBuffers(T);
+		CreateDescriptorSets(T);
 
 		mRenderTargets.emplace(ID, T);
+	}
+
+	void RenderTargetDelete(uint16_t ID)
+	{
+		for (auto &e : mRenderTargets[ID].UniformBuffer)
+			vkDestroyBuffer(device, e, nullptr);
+
+		for (auto &e : mRenderTargets[ID].UniformDeviceMemory)
+			vkFreeMemory(device, e, nullptr);
 	}
 
 	void initWindow()
@@ -1184,10 +1231,11 @@ class HelloTriangle
 			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
 			vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT16);
-			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0, nullptr);
+			// vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0, nullptr);
 
 			for (auto &Target : mRenderTargets)
 			{
+				vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &Target.second.UniformDescriptorSet[i], 0, nullptr);
 				vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(mRenderModels[Target.second.ModelID].Indices.size()), 1, mRenderModels[Target.second.ModelID].IndexOffset, mRenderModels[Target.second.ModelID].VertexOffset, 0);
 			}
 			// vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
@@ -1264,6 +1312,13 @@ class HelloTriangle
 
 		vkDestroySwapchainKHR(device, swapChain, nullptr);
 
+		for (auto &Target : mRenderTargets)
+			for (size_t i = 0; i < swapChainImages.size(); i++)
+			{
+				vkDestroyBuffer(device, Target.second.UniformBuffer[i], nullptr);
+				vkFreeMemory(device, Target.second.UniformDeviceMemory[i], nullptr);
+			}
+
 		for (size_t i = 0; i < swapChainImages.size(); i++)
 		{
 			vkDestroyBuffer(device, uniformBuffers[i], nullptr);
@@ -1286,7 +1341,36 @@ class HelloTriangle
 		createUniformBuffers();
 		createDescriptorPool();
 		createDescriptorSets();
+
+		for (auto &Target : mRenderTargets)
+		{
+			CreateUniformBuffers(Target.second);
+			CreateDescriptorSets(Target.second);
+		}
+
 		createCommandBuffers();
+	}
+
+	void UpdateUniformBuffer(uint32_t currentImage)
+	{
+		static auto startTime = std::chrono::high_resolution_clock::now();
+
+		auto currentTime = std::chrono::high_resolution_clock::now();
+		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+		UniformBufferObject ubo{};
+		ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.proj = glm::perspective(glm::radians(45.0f), (float)swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
+		ubo.proj[1][1] *= -1; // opengl legacy inversion
+
+		for (auto &Target : mRenderTargets)
+		{
+			void *data;
+			vkMapMemory(device, Target.second.UniformDeviceMemory[currentImage], 0, sizeof(ubo), 0, &data);
+			std::memcpy(data, &ubo, sizeof(ubo));
+			vkUnmapMemory(device, Target.second.UniformDeviceMemory[currentImage]);
+		}
 	}
 
 	void updateUniformBuffer(uint32_t currentImage)
@@ -1332,7 +1416,15 @@ class HelloTriangle
 			createCommandBuffers();
 			mRenderModelsDirty = false;
 		}
-		
+
+		if (mRenderTargetsDirty)
+		{
+			vkDeviceWaitIdle(device);
+			createCommandBuffers();
+			mRenderTargetsDirty = false;
+		}
+
+		UpdateUniformBuffer(imageIndex);
 		updateUniformBuffer(imageIndex);
 
 		VkSubmitInfo submitInfo{};
