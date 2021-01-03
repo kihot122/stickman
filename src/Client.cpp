@@ -5,6 +5,7 @@
 #include <cstring>
 #include <vector>
 #include <set>
+#include <map>
 #include <optional>
 #include <string>
 #include <fstream>
@@ -103,6 +104,33 @@ class HelloTriangle
 		std::vector<VkPresentModeKHR> presentModes;
 	};
 
+	struct RenderModel
+	{
+		std::vector<Vertex> Vertices;
+		std::vector<uint16_t> Indices;
+
+		size_t VertexOffset;
+		size_t IndexOffset;
+
+		RenderModel(const std::vector<Vertex> &Vertices, const std::vector<uint16_t> &Indices)
+			: Vertices(Vertices), Indices(Indices) {}
+
+		RenderModel(){}
+	};
+
+	struct RenderTarget
+	{
+		uint16_t ModelID;
+
+		glm::mat4 Transform;
+
+		std::vector<VkDescriptorSet> UniformDescriptorSet;
+		std::vector<VkDeviceMemory> UniformDeviceMemory;
+		std::vector<VkBuffer> UniformBuffer;
+
+		RenderTarget(uint16_t ModelID) : ModelID(ModelID) {}
+	};
+
 	GLFWwindow *window = nullptr;
 	VkInstance instance{};
 	VkDebugUtilsMessengerEXT debugMessenger{};
@@ -151,11 +179,136 @@ class HelloTriangle
 
 	size_t currentFrame = 0;
 
+	glm::mat4 ViewTransform{};
+	glm::mat4 ProjectionTransform{};
+
+	std::map<uint16_t, RenderModel> mRenderModels{};
+	std::map<uint16_t, RenderTarget> mRenderTargets{};
+
+	bool mRenderModelsDirty = false;
+
 #ifdef NDEBUG
 	const bool enableValidationLayers = false;
 #else
 	const bool enableValidationLayers = true;
 #endif
+
+	void CreateVertexBuffer(std::map<uint16_t, RenderModel> &Models)
+	{
+		VkDeviceSize bufferSize = 0;
+		for (auto &Model : Models)
+			bufferSize += sizeof(Vertex) * Model.second.Vertices.size();
+
+		VkBuffer stagingBuffer;
+		VkDeviceMemory stagingBufferMemory;
+		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+		void *data;
+		vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+		size_t offset = 0;
+		for (auto &Model : Models)
+		{
+			Model.second.VertexOffset = offset / sizeof(Vertex);
+			std::memcpy(static_cast<uint8_t *>(data) + offset, Model.second.Vertices.data(), static_cast<size_t>(bufferSize));
+			offset += sizeof(Vertex) * Model.second.Vertices.size();
+		}
+		vkUnmapMemory(device, stagingBufferMemory);
+
+		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
+		copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+		vkDestroyBuffer(device, stagingBuffer, nullptr);
+		vkFreeMemory(device, stagingBufferMemory, nullptr);
+	}
+
+	void CreateIndexBuffer(std::map<uint16_t, RenderModel> &Models)
+	{
+		VkDeviceSize bufferSize = 0;
+		for (auto &Model : Models)
+			bufferSize += sizeof(uint16_t) * Model.second.Indices.size();
+
+		VkBuffer stagingBuffer;
+		VkDeviceMemory stagingBufferMemory;
+		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+		void *data;
+		vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+		size_t offset = 0;
+		for (auto &Model : Models)
+		{
+			Model.second.IndexOffset = offset / sizeof(uint16_t);
+			std::memcpy(static_cast<uint8_t *>(data) + offset, Model.second.Indices.data(), static_cast<size_t>(bufferSize));
+			offset += sizeof(uint16_t) * Model.second.Indices.size();
+		}
+		vkUnmapMemory(device, stagingBufferMemory);
+
+		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
+		copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+		vkDestroyBuffer(device, stagingBuffer, nullptr);
+		vkFreeMemory(device, stagingBufferMemory, nullptr);
+	}
+
+	void RebuildBuffers()
+	{
+		if (vertexBuffer != VK_NULL_HANDLE)
+		{
+			vkDestroyBuffer(device, vertexBuffer, nullptr);
+			vkFreeMemory(device, vertexBufferMemory, nullptr);
+			vertexBuffer = VK_NULL_HANDLE;
+		}
+		if (indexBuffer != VK_NULL_HANDLE)
+		{
+			vkDestroyBuffer(device, indexBuffer, nullptr);
+			vkFreeMemory(device, indexBufferMemory, nullptr);
+			indexBuffer = VK_NULL_HANDLE;
+		}
+
+		if (!mRenderModels.size())
+			return;
+
+		CreateVertexBuffer(mRenderModels);
+		CreateIndexBuffer(mRenderModels);
+	}
+
+	void RenderModelCreate(uint16_t ID, const RenderModel &Model)
+	{
+		mRenderModels.emplace(ID, Model);
+		mRenderModelsDirty = true;
+	}
+
+	void RenderModelDelete(uint16_t ID)
+	{
+		mRenderModels.erase(ID);
+	}
+
+	void CreateDummyModel()
+	{
+		std::vector<Vertex> V{{{0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}}};
+		std::vector<uint16_t> I{0, 0, 0};
+
+		RenderModelCreate(0, RenderModel(V, I));
+
+		RebuildBuffers();
+	}
+
+	void CreateUniformBuffers(RenderTarget &Target)
+	{
+		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+
+		Target.UniformBuffer.resize(swapChainImages.size());
+		Target.UniformDeviceMemory.resize(swapChainImages.size());
+
+		for (size_t i = 0; i < swapChainImages.size(); i++)
+			createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, Target.UniformBuffer[i], Target.UniformDeviceMemory[i]);
+	}
+
+	void RenderTargetCreate(uint16_t ID, uint16_t ModelID)
+	{
+		RenderTarget T(ModelID);
+
+		// CreateUniformBuffers(T);
+
+		mRenderTargets.emplace(ID, T);
+	}
 
 	void initWindow()
 	{
@@ -950,7 +1103,8 @@ class HelloTriangle
 		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		poolInfo.poolSizeCount = 1;
 		poolInfo.pPoolSizes = &poolSize;
-		poolInfo.maxSets = static_cast<uint32_t>(swapChainImages.size());
+		poolInfo.maxSets = 65536;
+		// poolInfo.maxSets = static_cast<uint32_t>(swapChainImages.size());
 
 		if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
 			throw std::runtime_error("Failed to create descriptor pool.");
@@ -1031,7 +1185,12 @@ class HelloTriangle
 			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
 			vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0, nullptr);
-			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+
+			for (auto &Target : mRenderTargets)
+			{
+				vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(mRenderModels[Target.second.ModelID].Indices.size()), 1, mRenderModels[Target.second.ModelID].IndexOffset, mRenderModels[Target.second.ModelID].VertexOffset, 0);
+			}
+			// vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 			vkCmdEndRenderPass(commandBuffers[i]);
 
 			if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
@@ -1080,8 +1239,9 @@ class HelloTriangle
 		createGraphicsPipeline();
 		createFramebuffers();
 		createCommandPool();
-		createVertexBuffer();
-		createIndexBuffer();
+		CreateDummyModel();
+		// createVertexBuffer();
+		// createIndexBuffer();
 		createUniformBuffers();
 		createDescriptorPool();
 		createDescriptorSets();
@@ -1165,6 +1325,14 @@ class HelloTriangle
 			vkWaitForFences(device, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
 		imagesInFlight[imageIndex] = inFlightFences[currentFrame];
 
+		if (mRenderModelsDirty)
+		{
+			vkDeviceWaitIdle(device);
+			RebuildBuffers();
+			createCommandBuffers();
+			mRenderModelsDirty = false;
+		}
+		
 		updateUniformBuffer(imageIndex);
 
 		VkSubmitInfo submitInfo{};
@@ -1209,6 +1377,10 @@ class HelloTriangle
 
 	void mainLoop()
 	{
+		RenderModelCreate(1, RenderModel(vertices, indices));
+
+		RenderTargetCreate(1, 1);
+
 		while (!glfwWindowShouldClose(window))
 		{
 			glfwPollEvents();
