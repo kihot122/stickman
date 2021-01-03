@@ -346,15 +346,36 @@ class HelloTriangle
 		CreateDescriptorSets(T);
 
 		mRenderTargets.emplace(ID, T);
+		mRenderTargetsDirty = true;
 	}
 
 	void RenderTargetDelete(uint16_t ID)
 	{
+		vkDeviceWaitIdle(device);
+
 		for (auto &e : mRenderTargets[ID].UniformBuffer)
 			vkDestroyBuffer(device, e, nullptr);
 
 		for (auto &e : mRenderTargets[ID].UniformDeviceMemory)
 			vkFreeMemory(device, e, nullptr);
+
+		mRenderTargets.erase(ID);
+		mRenderTargetsDirty = true;
+	}
+
+	void RenderTargetUpdate(uint16_t ID, glm::mat4 Transform)
+	{
+		mRenderTargets[ID].Transform = Transform;
+	}
+
+	void ViewTransformUpdate(glm::mat4 Transform)
+	{
+		ViewTransform = Transform;
+	}
+
+	void ProjectionTransformUpdate(glm::mat4 Transform)
+	{
+		ProjectionTransform = Transform;
 	}
 
 	void initWindow()
@@ -1290,9 +1311,9 @@ class HelloTriangle
 		CreateDummyModel();
 		// createVertexBuffer();
 		// createIndexBuffer();
-		createUniformBuffers();
+		// createUniformBuffers();
 		createDescriptorPool();
-		createDescriptorSets();
+		// createDescriptorSets();
 		createCommandBuffers();
 		createSyncObjects();
 	}
@@ -1319,11 +1340,11 @@ class HelloTriangle
 				vkFreeMemory(device, Target.second.UniformDeviceMemory[i], nullptr);
 			}
 
-		for (size_t i = 0; i < swapChainImages.size(); i++)
-		{
-			vkDestroyBuffer(device, uniformBuffers[i], nullptr);
-			vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
-		}
+		// for (size_t i = 0; i < swapChainImages.size(); i++)
+		// {
+		// 	vkDestroyBuffer(device, uniformBuffers[i], nullptr);
+		// 	vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
+		// }
 
 		vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 	}
@@ -1338,9 +1359,9 @@ class HelloTriangle
 		createRenderPass();
 		createGraphicsPipeline();
 		createFramebuffers();
-		createUniformBuffers();
+		// createUniformBuffers();
 		createDescriptorPool();
-		createDescriptorSets();
+		// createDescriptorSets();
 
 		for (auto &Target : mRenderTargets)
 		{
@@ -1352,6 +1373,25 @@ class HelloTriangle
 	}
 
 	void UpdateUniformBuffer(uint32_t currentImage)
+	{
+		ProjectionTransform = glm::perspective(glm::radians(45.0f), (float)swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
+		ProjectionTransform[1][1] *= -1; // opengl legacy inversion
+
+		for (auto &Target : mRenderTargets)
+		{
+			UniformBufferObject ubo{};
+			ubo.model = Target.second.Transform;
+			ubo.view = ViewTransform;
+			ubo.proj = ProjectionTransform;
+
+			void *data;
+			vkMapMemory(device, Target.second.UniformDeviceMemory[currentImage], 0, sizeof(ubo), 0, &data);
+			std::memcpy(data, &ubo, sizeof(ubo));
+			vkUnmapMemory(device, Target.second.UniformDeviceMemory[currentImage]);
+		}
+	}
+
+	void UpdateUniformBuffer2(uint32_t currentImage)
 	{
 		static auto startTime = std::chrono::high_resolution_clock::now();
 
@@ -1425,7 +1465,7 @@ class HelloTriangle
 		}
 
 		UpdateUniformBuffer(imageIndex);
-		updateUniformBuffer(imageIndex);
+		// updateUniformBuffer(imageIndex);
 
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1472,6 +1512,12 @@ class HelloTriangle
 		RenderModelCreate(1, RenderModel(vertices, indices));
 
 		RenderTargetCreate(1, 1);
+		RenderTargetUpdate(1, glm::rotate(glm::mat4(1.0f), glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
+
+		RenderTargetCreate(2, 1);
+		RenderTargetUpdate(2, glm::translate(glm::mat4(1.0f), glm::vec3(-1.5f, -0.5f, 0.0f)));
+
+		ViewTransformUpdate(glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
 
 		while (!glfwWindowShouldClose(window))
 		{
