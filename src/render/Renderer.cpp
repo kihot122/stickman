@@ -9,6 +9,11 @@ const bool enableValidationLayers = false;
 const bool enableValidationLayers = true;
 #endif
 
+bool Renderer::QueueFamilyIndices::isComplete()
+{
+    return graphiscFamily.has_value() and presentFamily.has_value();
+}
+
 void Renderer::CreateVertexBuffer()
 {
     VkDeviceSize bufferSize = 0;
@@ -1051,6 +1056,14 @@ std::vector<const char *> Renderer::getRequiredExtensions()
         extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
     return extensions;
+}
+
+std::vector<char> Renderer::readFile(const std::string &filename)
+{
+    std::fstream file(filename, std::ios::in | std::ios::binary);
+    std::vector<char> data(std::filesystem::file_size(filename));
+    file.read(data.data(), std::filesystem::file_size(filename));
+    return data;
 }
 
 VkShaderModule Renderer::createShaderModule(const std::vector<char> &code)

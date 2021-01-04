@@ -95,23 +95,12 @@ private:
         return VK_FALSE;
     }
 
-    static std::vector<char> readFile(const std::string &filename)
-    {
-        std::fstream file(filename, std::ios::in | std::ios::binary);
-        std::vector<char> data(std::filesystem::file_size(filename));
-        file.read(data.data(), std::filesystem::file_size(filename));
-        return data;
-    }
-
     struct QueueFamilyIndices
     {
         std::optional<uint32_t> graphiscFamily;
         std::optional<uint32_t> presentFamily;
 
-        bool isComplete()
-        {
-            return graphiscFamily.has_value() and presentFamily.has_value();
-        }
+        bool isComplete();
     };
 
     struct SwapChainSupportDetails
@@ -216,6 +205,7 @@ private:
     bool isDeviceSuitable(VkPhysicalDevice device);
 
     std::vector<const char *> getRequiredExtensions();
+    std::vector<char> readFile(const std::string &filename);
     VkShaderModule createShaderModule(const std::vector<char> &code);
     VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
     VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);
