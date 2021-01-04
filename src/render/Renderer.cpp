@@ -1,8 +1,6 @@
 #include <cstring>
 #include <set>
 
-#include "glm/gtc/matrix_transform.hpp"
-
 #include "Renderer.hpp"
 
 #ifdef NDEBUG
@@ -87,17 +85,6 @@ void Renderer::RebuildBuffers()
     CreateIndexBuffer();
 }
 
-void Renderer::RenderModelCreate(uint16_t ID, const RenderModel &Model)
-{
-    mRenderModels.emplace(ID, Model);
-    mRenderModelsDirty = true;
-}
-
-void Renderer::RenderModelDelete(uint16_t ID)
-{
-    mRenderModels.erase(ID);
-}
-
 void Renderer::CreateDummyModel()
 {
     std::vector<Vertex> V{{{0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}}};
@@ -152,41 +139,6 @@ void Renderer::CreateDescriptorSets(RenderTarget &Target)
 
         vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
     }
-}
-
-void Renderer::RenderTargetCreate(uint16_t ID, uint16_t ModelID)
-{
-    RenderTarget T(ModelID);
-
-    CreateUniformBuffers(T);
-    CreateDescriptorSets(T);
-
-    mRenderTargets.emplace(ID, T);
-    mRenderTargetsDirty = true;
-}
-
-void Renderer::RenderTargetDelete(uint16_t ID)
-{
-    vkDeviceWaitIdle(device);
-
-    for (auto &e : mRenderTargets[ID].UniformBuffer)
-        vkDestroyBuffer(device, e, nullptr);
-
-    for (auto &e : mRenderTargets[ID].UniformDeviceMemory)
-        vkFreeMemory(device, e, nullptr);
-
-    mRenderTargets.erase(ID);
-    mRenderTargetsDirty = true;
-}
-
-void Renderer::RenderTargetUpdate(uint16_t ID, glm::mat4 Transform)
-{
-    mRenderTargets[ID].Transform = Transform;
-}
-
-void Renderer::ViewTransformUpdate(glm::mat4 Transform)
-{
-    ViewTransform = Transform;
 }
 
 void Renderer::ProjectionTransformUpdate(glm::mat4 Transform)
@@ -992,29 +944,10 @@ void Renderer::drawFrame()
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-void Renderer::mainLoop()
-{
-    RenderModelCreate(1, RenderModel(vertices, indices));
-
-    RenderTargetCreate(1, 1);
-    RenderTargetUpdate(1, glm::rotate(glm::mat4(1.0f), glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
-
-    RenderTargetCreate(2, 1);
-    RenderTargetUpdate(2, glm::translate(glm::mat4(1.0f), glm::vec3(-1.5f, -0.5f, 0.0f)));
-
-    ViewTransformUpdate(glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
-
-    while (!glfwWindowShouldClose(window))
-    {
-        glfwPollEvents();
-        drawFrame();
-    }
-
-    vkDeviceWaitIdle(device);
-}
-
 void Renderer::cleanup()
 {
+    vkDeviceWaitIdle(device);
+
     cleanupSwapChain();
 
     vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
@@ -1236,10 +1169,69 @@ uint32_t Renderer::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags pro
     throw std::runtime_error("Failed to find suitable memory type.");
 }
 
-void Renderer::run()
+Renderer::Renderer()
 {
     initWindow();
     initVulkan();
-    mainLoop();
+}
+
+Renderer::~Renderer()
+{
     cleanup();
+}
+
+void Renderer::RenderModelCreate(uint16_t ID, const RenderModel &Model)
+{
+    mRenderModels.emplace(ID, Model);
+    mRenderModelsDirty = true;
+}
+
+void Renderer::RenderModelDelete(uint16_t ID)
+{
+    mRenderModels.erase(ID);
+}
+
+void Renderer::RenderTargetCreate(uint16_t ID, uint16_t ModelID)
+{
+    RenderTarget T(ModelID);
+
+    CreateUniformBuffers(T);
+    CreateDescriptorSets(T);
+
+    mRenderTargets.emplace(ID, T);
+    mRenderTargetsDirty = true;
+}
+
+void Renderer::RenderTargetDelete(uint16_t ID)
+{
+    vkDeviceWaitIdle(device);
+
+    for (auto &e : mRenderTargets[ID].UniformBuffer)
+        vkDestroyBuffer(device, e, nullptr);
+
+    for (auto &e : mRenderTargets[ID].UniformDeviceMemory)
+        vkFreeMemory(device, e, nullptr);
+
+    mRenderTargets.erase(ID);
+    mRenderTargetsDirty = true;
+}
+
+void Renderer::RenderTargetUpdate(uint16_t ID, glm::mat4 Transform)
+{
+    mRenderTargets[ID].Transform = Transform;
+}
+
+void Renderer::ViewTransformUpdate(glm::mat4 Transform)
+{
+    ViewTransform = Transform;
+}
+
+void Renderer::Draw()
+{
+    drawFrame();
+}
+
+GLFWwindow *Renderer::GetWindowHandle()
+{
+    return window;
 }

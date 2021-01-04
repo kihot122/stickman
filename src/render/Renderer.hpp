@@ -11,9 +11,11 @@
 #include "vulkan/vulkan.h"
 #include "GLFW/glfw3.h"
 #include "glm/glm.hpp"
+#include "glm/gtc/matrix_transform.hpp"
 
 class Renderer
 {
+public:
     struct Vertex
     {
         glm::vec2 pos;
@@ -46,6 +48,35 @@ class Renderer
         }
     };
 
+    struct RenderModel
+    {
+        std::vector<Vertex> Vertices;
+        std::vector<uint16_t> Indices;
+
+        size_t VertexOffset;
+        size_t IndexOffset;
+
+        RenderModel(const std::vector<Vertex> &Vertices, const std::vector<uint16_t> &Indices)
+            : Vertices(Vertices), Indices(Indices) {}
+
+        RenderModel() {}
+    };
+
+    struct RenderTarget
+    {
+        uint16_t ModelID;
+
+        glm::mat4 Transform;
+
+        std::vector<VkDescriptorSet> UniformDescriptorSet;
+        std::vector<VkDeviceMemory> UniformDeviceMemory;
+        std::vector<VkBuffer> UniformBuffer;
+
+        RenderTarget(uint16_t ModelID) : ModelID(ModelID) {}
+        RenderTarget() : ModelID(0) {}
+    };
+
+private:
     struct UniformBufferObject
     {
         alignas(16) glm::mat4 model;
@@ -88,34 +119,6 @@ class Renderer
         VkSurfaceCapabilitiesKHR capabilities;
         std::vector<VkSurfaceFormatKHR> formats;
         std::vector<VkPresentModeKHR> presentModes;
-    };
-
-    struct RenderModel
-    {
-        std::vector<Vertex> Vertices;
-        std::vector<uint16_t> Indices;
-
-        size_t VertexOffset;
-        size_t IndexOffset;
-
-        RenderModel(const std::vector<Vertex> &Vertices, const std::vector<uint16_t> &Indices)
-            : Vertices(Vertices), Indices(Indices) {}
-
-        RenderModel() {}
-    };
-
-    struct RenderTarget
-    {
-        uint16_t ModelID;
-
-        glm::mat4 Transform;
-
-        std::vector<VkDescriptorSet> UniformDescriptorSet;
-        std::vector<VkDeviceMemory> UniformDeviceMemory;
-        std::vector<VkBuffer> UniformBuffer;
-
-        RenderTarget(uint16_t ModelID) : ModelID(ModelID) {}
-        RenderTarget() : ModelID(0) {}
     };
 
     GLFWwindow *window = nullptr;
@@ -175,27 +178,12 @@ class Renderer
     bool mRenderModelsDirty = false;
     bool mRenderTargetsDirty = false;
 
-    const std::vector<Vertex> vertices = {
-        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-        {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-        {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-        {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
-
-    const std::vector<uint16_t> indices = {
-        0, 1, 2, 2, 3, 0};
-
     void CreateVertexBuffer();
     void CreateIndexBuffer();
     void RebuildBuffers();
-    void RenderModelCreate(uint16_t ID, const RenderModel &Model);
-    void RenderModelDelete(uint16_t ID);
     void CreateDummyModel();
     void CreateUniformBuffers(RenderTarget &Target);
     void CreateDescriptorSets(RenderTarget &Target);
-    void RenderTargetCreate(uint16_t ID, uint16_t ModelID);
-    void RenderTargetDelete(uint16_t ID);
-    void RenderTargetUpdate(uint16_t ID, glm::mat4 Transform);
-    void ViewTransformUpdate(glm::mat4 Transform);
     void ProjectionTransformUpdate(glm::mat4 Transform);
     void UpdateUniformBuffer(uint32_t currentImage);
 
@@ -221,7 +209,6 @@ class Renderer
     void cleanupSwapChain();
     void recreateSwapChain();
     void drawFrame();
-    void mainLoop();
     void cleanup();
 
     bool checkValidationLayerSupport();
@@ -238,5 +225,16 @@ class Renderer
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
 public:
-    void run();
+    Renderer();
+    ~Renderer();
+
+    void RenderModelCreate(uint16_t ID, const RenderModel &Model);
+    void RenderModelDelete(uint16_t ID);
+    void RenderTargetCreate(uint16_t ID, uint16_t ModelID);
+    void RenderTargetDelete(uint16_t ID);
+    void RenderTargetUpdate(uint16_t ID, glm::mat4 Transform);
+    void ViewTransformUpdate(glm::mat4 Transform);
+    void Draw();
+
+    GLFWwindow *GetWindowHandle();
 };
