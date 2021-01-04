@@ -22,7 +22,7 @@ add_executable(Testman
     src/Testman.cpp 
     src/net/NetManager.cpp)
 
-target_link_libraries(Client ${Vulkan_LIBRARIES} glfw)
+target_link_libraries(Client ${Vulkan_LIBRARIES} glfw unofficial::box2d::box2d)
 target_link_libraries(Testman pthread)
 
 add_custom_command(TARGET Client POST_BUILD COMMAND ${CMAKE_SOURCE_DIR}/src/script/compileshader.sh WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
