@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <netdb.h>
 
+#include "../aux/Messenger.hpp"
 #include "NetManager.hpp"
 
 void NetManager::Listen()
@@ -33,7 +34,7 @@ void NetManager::Listen()
         int Result = accept(SocketFd, reinterpret_cast<sockaddr *>(&ClientAddress), &ClientAddressSize);
         if (Result == -1)
         {
-            std::cout << "Error" << errno;
+            Message(std::to_string(errno), MessageSource::NET, MessageSeverity::WARNING);
             break;
         }
 
@@ -68,7 +69,9 @@ void NetManager::Send()
             std::memcpy(Data + sizeof(GamePacketType) + sizeof(uint64_t), Packet->Data.data(), Packet->Data.size());
 
             if (write(Packet->Socket, Data, Size) <= 0)
-                std::cout << "Error" << errno;
+            {
+                Message(std::to_string(errno), MessageSource::NET, MessageSeverity::WARNING);
+            }
 
             delete[] Data;
             delete Packet;
