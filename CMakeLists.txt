@@ -10,9 +10,10 @@ set(CMAKE_CXX_FLAGS_DEBUG "-std=c++20 -march=native -Wall -g")
 find_package(Vulkan REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(glm REQUIRED)
+find_package(unofficial-box2d REQUIRED)
 
 add_executable(Client 
-    src/Client.cpp)
+    src/Client.cpp src/render/Renderer.cpp)
 
 add_executable(Server 
     src/Server.cpp)
