@@ -1,24 +1,13 @@
+#include "aux/Messenger.hpp"
 #include "net/NetManager.hpp"
-#include <iostream>
 
 int main()
 {
-    std::cout << "here" << std::endl;
-    int a = 0;
-    if (a == 0)
+    NetManager Manager("8304");
+
+    for (int i = 0; i < 2; i++)
     {
-        NetManager Manager("8303");
-        while (true)
-        {
-            std::vector<GamePacket *> Packets = Manager.Pull();
-            for (auto &Packet : Packets)
-                std::cout << static_cast<int>(Packet->Type) << std::endl;
-        }
-    }
-    else
-    {
-        NetManager Manager("8304");
-        Manager.Connect("192.168.8.111", "8303");
+        Manager.Connect("192.168.0.104", "8303");
 
         int conn;
         while (true)
@@ -28,20 +17,26 @@ int main()
                 break;
         }
 
-        Manager.Push(new GamePacket{GamePacketType::SERVER_INFO, conn, std::vector<uint8_t>{1, 2, 3, 4}});
+        Message("Connected", MessageSource::TESTMAN, MessageSeverity::INFO);
 
-        using namespace std::chrono_literals;
-
-        std::this_thread::sleep_for(1s);
-
-        Manager.~NetManager();
-
-        // Manager.Disconnect(conn);
+        Manager.Push(new GamePacket{GamePacketType::CLIENT_MESSAGE, conn, std::vector<uint8_t>{1, 2, 3, 4}});
 
         while (true)
         {
+            std::vector<GamePacket *> Packets = Manager.Pull();
+            if (Packets.size())
+            {
+                Message("Got response " + std::string(magic_enum::enum_name(Packets[0]->Type)), MessageSource::TESTMAN, MessageSeverity::INFO);
+                delete Packets[0];
+                break;
+            }
         }
-    }
 
+        Manager.Disconnect(conn);
+
+        while (Manager.GetSocketDel() == -1)
+            ;
+        Message("Disconnected", MessageSource::TESTMAN, MessageSeverity::INFO);
+    }
     return 0;
 }

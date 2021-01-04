@@ -1,4 +1,20 @@
+#include <iostream>
+#include <string>
+#include <thread>
+
+#include "aux/Messenger.hpp"
+#include "net/NetManager.hpp"
 #include "render/Renderer.hpp"
+
+void Chat(NetManager *Manager, int ServerFd)
+{
+	std::string Msg;
+	while (true)
+	{
+		std::getline(std::cin, Msg);
+		Manager->Push(new GamePacket{GamePacketType::CLIENT_MESSAGE, ServerFd, std::vector<uint8_t>(Msg.begin(), Msg.end())});
+	}
+}
 
 int main()
 {
@@ -12,6 +28,22 @@ int main()
 
 	const std::vector<uint16_t> indices = {
 		0, 1, 2, 2, 3, 0};
+
+	std::string Port;
+	int a = 0;
+	if (a == 0)
+		Port = "8304";
+	else
+		Port = "8305";
+
+	NetManager Manager(Port);
+	Manager.Connect("192.168.0.104", "8303");
+
+	int ServerFd = -1;
+	while (ServerFd == -1)
+		ServerFd = Manager.GetSocketNew();
+
+	std::thread ChatThread(Chat, &Manager, ServerFd);
 
 	try
 	{
@@ -27,6 +59,14 @@ int main()
 
 		while (!glfwWindowShouldClose(app.GetWindowHandle()))
 		{
+			for (auto &Packet : Manager.Pull())
+			{
+				if (Packet->Type == GamePacketType::SERVER_ECHO)
+					Message(std::string(Packet->Data.begin(), Packet->Data.end()), MessageSource::CHAT, MessageSeverity::INFO);
+
+				delete Packet;
+			}
+
 			glfwPollEvents();
 			app.Draw();
 		}
@@ -34,8 +74,8 @@ int main()
 	catch (const std::exception &e)
 	{
 		std::cerr << e.what() << std::endl;
-		return EXIT_FAILURE;
+		exit(1);
 	}
 
-	return EXIT_SUCCESS;
+	exit(0);
 }

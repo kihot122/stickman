@@ -6,11 +6,8 @@
 
 enum class GamePacketType : uint8_t
 {
-    CLIENT_INFO,
-    SERVER_INFO,
-    CLIENT_OK,
     CLIENT_MESSAGE,
-    SERVER_MESSAGE,
+    SERVER_ECHO,
 };
 
 struct GamePacket

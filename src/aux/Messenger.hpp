@@ -11,6 +11,7 @@ enum class MessageSource
     SERVER,
     TESTMAN,
     NET,
+    CHAT,
 };
 
 enum class MessageSeverity
