@@ -13,16 +13,20 @@ find_package(glm REQUIRED)
 find_package(unofficial-box2d REQUIRED)
 
 add_executable(Client 
-    src/Client.cpp src/render/Renderer.cpp)
+    src/Client.cpp 
+    src/render/Renderer.cpp
+    src/net/NetManager.cpp)
 
 add_executable(Server 
-    src/Server.cpp)
+    src/Server.cpp
+    src/net/NetManager.cpp)
 
 add_executable(Testman 
     src/Testman.cpp 
     src/net/NetManager.cpp)
 
-target_link_libraries(Client ${Vulkan_LIBRARIES} glfw unofficial::box2d::box2d)
+target_link_libraries(Client pthread ${Vulkan_LIBRARIES} glfw unofficial::box2d::box2d)
+target_link_libraries(Server pthread)
 target_link_libraries(Testman pthread)
 
 add_custom_command(TARGET Client POST_BUILD COMMAND ${CMAKE_SOURCE_DIR}/src/script/compileshader.sh WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
