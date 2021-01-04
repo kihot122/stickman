@@ -222,8 +222,8 @@ public:
     void RenderModelDelete(uint16_t ID);
     void RenderTargetCreate(uint16_t ID, uint16_t ModelID);
     void RenderTargetDelete(uint16_t ID);
-    void RenderTargetUpdate(uint16_t ID, glm::mat4 Transform);
-    void ViewTransformUpdate(glm::mat4 Transform);
+    void RenderTargetUpdate(uint16_t ID, const glm::mat4 &Transform);
+    void ViewTransformUpdate(const glm::mat4 &Transform);
     void Draw();
 
     GLFWwindow *GetWindowHandle();

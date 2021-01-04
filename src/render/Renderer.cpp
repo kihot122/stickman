@@ -1229,12 +1229,12 @@ void Renderer::RenderTargetDelete(uint16_t ID)
     mRenderTargetsDirty = true;
 }
 
-void Renderer::RenderTargetUpdate(uint16_t ID, glm::mat4 Transform)
+void Renderer::RenderTargetUpdate(uint16_t ID, const glm::mat4 &Transform)
 {
     mRenderTargets[ID].Transform = Transform;
 }
 
-void Renderer::ViewTransformUpdate(glm::mat4 Transform)
+void Renderer::ViewTransformUpdate(const glm::mat4 &Transform)
 {
     ViewTransform = Transform;
 }
