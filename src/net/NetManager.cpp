@@ -95,7 +95,7 @@ void NetManager::Receive(int SocketFd)
             break;
         Packet->Data.resize(Size);
 
-        if (read(SocketFd, Packet->Data.data(), sizeof(Size)) <= 0)
+        if (read(SocketFd, Packet->Data.data(), Size) <= 0)
             break;
 
         ReceiveQueue.enqueue(Packet);
