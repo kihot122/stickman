@@ -6,6 +6,66 @@
 #include "net/NetManager.hpp"
 #include "render/Renderer.hpp"
 
+void Unpack_ServerModelCreateBulk(GamePacket *Packet, Renderer &Backend)
+{
+	for (auto iter = Packet->Data.begin(); iter != Packet->Data.end();)
+	{
+		uint16_t ModelID = *reinterpret_cast<uint16_t *>(&(*iter));
+		iter += sizeof(uint16_t);
+
+		uint16_t VertexCount = *reinterpret_cast<uint16_t *>(&(*iter));
+		iter += sizeof(uint16_t);
+
+		std::vector<Renderer::Vertex> V;
+		for (uint16_t i = 0; i < VertexCount; i++)
+		{
+			Renderer::Vertex Vert = *reinterpret_cast<Renderer::Vertex *>(&(*iter));
+			V.push_back(Vert);
+			iter += sizeof(Renderer::Vertex);
+		}
+
+		uint16_t IndexCount = *reinterpret_cast<uint16_t *>(&(*iter));
+		iter += sizeof(uint16_t);
+
+		std::vector<uint16_t> I;
+		for (uint16_t i = 0; i < IndexCount; i++)
+		{
+			I.push_back(*reinterpret_cast<uint16_t *>(&(*iter)));
+			iter += sizeof(uint16_t);
+		}
+
+		Backend.RenderModelCreate(ModelID, Renderer::RenderModel(V, I));
+	}
+}
+
+void Unpack_ServerTargetCreateBulk(GamePacket *Packet, Renderer &Backend)
+{
+	for (auto iter = Packet->Data.begin(); iter != Packet->Data.end();)
+	{
+		uint16_t ModelID = *reinterpret_cast<uint16_t *>(&(*iter));
+		iter += sizeof(uint16_t);
+
+		uint16_t TargetID = *reinterpret_cast<uint16_t *>(&(*iter));
+		iter += sizeof(uint16_t);
+
+		Backend.RenderTargetCreate(TargetID, ModelID);
+	}
+}
+
+void Unpack_ServerTargetUpdateBulk(GamePacket *Packet, Renderer &Backend)
+{
+	for (auto iter = Packet->Data.begin(); iter != Packet->Data.end();)
+	{
+		uint16_t TargetID = *reinterpret_cast<uint16_t *>(&(*iter));
+		iter += sizeof(uint16_t);
+
+		glm::mat4 Matrix = *reinterpret_cast<glm::mat4 *>(&(*iter));
+		iter += sizeof(glm::mat4);
+
+		Backend.RenderTargetUpdate(TargetID, Matrix);
+	}
+}
+
 void Chat(NetManager *Manager, int ServerFd)
 {
 	std::string Msg;
@@ -18,16 +78,7 @@ void Chat(NetManager *Manager, int ServerFd)
 
 int main()
 {
-	Renderer app;
-
-	const std::vector<Renderer::Vertex> vertices = {
-		{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-		{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-		{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-		{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
-
-	const std::vector<uint16_t> indices = {
-		0, 1, 2, 2, 3, 0};
+	Renderer Rend;
 
 	std::string Port;
 	int a = 0;
@@ -47,28 +98,38 @@ int main()
 
 	try
 	{
-		app.RenderModelCreate(1, Renderer::RenderModel(vertices, indices));
+		Rend.ViewTransformUpdate(glm::lookAt(glm::vec3(0.0f, 0.0f, 12.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)));
 
-		app.RenderTargetCreate(1, 1);
-		app.RenderTargetUpdate(1, glm::rotate(glm::mat4(1.0f), glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
-
-		app.RenderTargetCreate(2, 1);
-		app.RenderTargetUpdate(2, glm::translate(glm::mat4(1.0f), glm::vec3(-1.5f, -0.5f, 0.0f)));
-
-		app.ViewTransformUpdate(glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
-
-		while (!glfwWindowShouldClose(app.GetWindowHandle()))
+		while (!glfwWindowShouldClose(Rend.GetWindowHandle()))
 		{
 			for (auto &Packet : Manager.Pull())
 			{
-				if (Packet->Type == GamePacketType::SERVER_ECHO)
+				if (Packet->Type == GamePacketType::SERVER_ECHO_MESSAGE)
 					Message(std::string(Packet->Data.begin(), Packet->Data.end()), MessageSource::CHAT, MessageSeverity::INFO);
+
+				if (Packet->Type == GamePacketType::SERVER_MODEL_CREATE_BULK)
+				{
+					Message("Model create bulk", MessageSource::CLIENT, MessageSeverity::INFO);
+					Unpack_ServerModelCreateBulk(Packet, Rend);
+				}
+
+				if (Packet->Type == GamePacketType::SERVER_TARGET_CREATE_BULK)
+				{
+					Message("Target create bulk", MessageSource::CLIENT, MessageSeverity::INFO);
+					Unpack_ServerTargetCreateBulk(Packet, Rend);
+				}
+
+				if (Packet->Type == GamePacketType::SERVER_TARGET_UPDATE_BULK)
+				{
+					Message("Target update bulk", MessageSource::CLIENT, MessageSeverity::INFO);
+					Unpack_ServerTargetUpdateBulk(Packet, Rend);
+				}
 
 				delete Packet;
 			}
 
 			glfwPollEvents();
-			app.Draw();
+			Rend.Draw();
 		}
 	}
 	catch (const std::exception &e)
@@ -77,5 +138,6 @@ int main()
 		exit(1);
 	}
 
+	Manager.Disconnect(ServerFd);
 	exit(0);
 }
