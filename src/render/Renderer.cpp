@@ -153,7 +153,7 @@ void Renderer::ProjectionTransformUpdate(glm::mat4 Transform)
 
 void Renderer::UpdateUniformBuffer(uint32_t currentImage)
 {
-    ProjectionTransform = glm::perspective(glm::radians(45.0f), (float)swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
+    ProjectionTransform = glm::perspective(glm::radians(45.0f), (float)swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 100.0f);
     ProjectionTransform[1][1] *= -1; // opengl legacy inversion
 
     for (auto &Target : mRenderTargets)
