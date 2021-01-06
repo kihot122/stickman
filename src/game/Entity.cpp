@@ -25,6 +25,11 @@ bool Entity::IsDone()
     return Done;
 }
 
+void Entity::Kill()
+{
+    Done = true;
+}
+
 EntityWall::EntityWall(uint16_t modelID, uint16_t targetID, float weight, float height, float xPos, float yPos, b2World *world, bool dirty)
 {
     Type = EntityType::WALL;
@@ -68,7 +73,7 @@ EntityPlayer::EntityPlayer(uint16_t modelID, uint16_t targetID, float weight, fl
 }
 void EntityPlayer::Tick()
 {
-    
+
     if (player->getBody()->GetPosition().y < -54.0f)
         Done = true;
 }

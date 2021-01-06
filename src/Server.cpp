@@ -303,7 +303,7 @@ int main()
                 for (auto pEntity : UpdateEntities)
                     if (pEntity->GetType() == EntityType::PLAYER)
                         if (reinterpret_cast<EntityPlayer *>(pEntity)->GetSocket() == DelPlayer)
-                            DeleteEntities.push_back(pEntity);
+                            reinterpret_cast<EntityPlayer *>(pEntity)->Kill();
 
                 Message("Player disconnected", MessageSource::SERVER, MessageSeverity::INFO);
             }

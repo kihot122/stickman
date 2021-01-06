@@ -15,11 +15,11 @@ enum class EntityType
     BULLET,
 };
 enum _moveState
-    {
-        MS_LEFT,
-        MS_RIGHT,
-        MS_UP
-    };
+{
+    MS_LEFT,
+    MS_RIGHT,
+    MS_UP
+};
 
 class Entity
 {
@@ -41,31 +41,35 @@ public:
     EntityType GetType();
     uint16_t GetModelID();
     uint16_t GetTargetID();
+
     bool IsDirty();
     bool IsDone();
+
+    void Kill();
 };
 
 class EntityWall : public Entity
 {
-    Ground* wall;
+    Ground *wall;
 
 public:
-    EntityWall(uint16_t modelID, uint16_t targetID, float weight, float height, float xPos, float yPos, b2World* world, bool dirty);
+    EntityWall(uint16_t modelID, uint16_t targetID, float weight, float height, float xPos, float yPos, b2World *world, bool dirty);
 
     virtual void Tick();
     virtual std::vector<Renderer::Vertex> ModelCreateVertices();
     virtual std::vector<uint16_t> ModelCreateIndices();
     virtual glm::mat4 TargetUpdate();
-    Ground* getGroundEntity();
+    Ground *getGroundEntity();
 };
 
 class EntityPlayer : public Entity
 {
-    Box* player;
+    Box *player;
     int socket;
+
 public:
     _moveState moveState;
-    EntityPlayer(uint16_t modelID, uint16_t targetID, float weight, float height, float xPos, float yPos, b2World* world, bool dirty, int socket_);
+    EntityPlayer(uint16_t modelID, uint16_t targetID, float weight, float height, float xPos, float yPos, b2World *world, bool dirty, int socket_);
     virtual void Tick();
     virtual std::vector<Renderer::Vertex> ModelCreateVertices();
     virtual std::vector<uint16_t> ModelCreateIndices();
@@ -73,5 +77,5 @@ public:
     void SetSocketToPlayer();
     int GetSocket();
     void SetAction(int key);
-    Box* GetGroundEntity();
+    Box *GetGroundEntity();
 };
