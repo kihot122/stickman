@@ -11,7 +11,7 @@
 #include "box2d/box2d.h"
 
 const int64_t TickTime = std::pow(10, 9) / 64;
-const float TickStep = 1.0f/64.0f;
+const float TickStep = 1.0f / 64.0f;
 
 int Unpack_ClientMove(GamePacket *Packet)
 {
@@ -208,21 +208,22 @@ int main()
 
                 if (Packet->Type == GamePacketType::CLIENT_MOVE)
                 {
-                    for(auto pEntity : UpdateEntities)
-                    {
-                        if(pEntity->GetType() == EntityType::PLAYER)
-                        {   
-                            if(reinterpret_cast<EntityPlayer*>(pEntity)->GetSocket() == Packet->Socket)
-                            {
-                                reinterpret_cast<EntityPlayer*>(pEntity)->SetAction(Unpack_ClientMove(Packet));
-                            } 
-                        }
-                    }
-                }
+                    bool Found = false;
 
+                    for (auto pEntity : UpdateEntities)
+                        if (pEntity->GetType() == EntityType::PLAYER)
+                            if (reinterpret_cast<EntityPlayer *>(pEntity)->GetSocket() == Packet->Socket)
+                            {
+                                reinterpret_cast<EntityPlayer *>(pEntity)->SetAction(Unpack_ClientMove(Packet));
+                                Found = true;
+                            }
+
+                    if (!Found)
+                        CreateEntities.push_back(new EntityPlayer(9, 9 + Packet->Socket, 1.0f, 2.0f, 20.0f, 20.0f, world, true, Packet->Socket));
+                }
                 delete Packet;
             }
-            //world.step
+
             world->Step(TickStep, 6, 2);
 
             for (auto pEntity : CreateEntities)
@@ -290,8 +291,7 @@ int main()
                 Manager.Push(Pack_ServerTargetUpdateBulk(TickingEntities, NewPlayer));
 
                 //create entity -nowy gracz
-                CreateEntities.push_back(new EntityPlayer(9, 9, 1.0f, 2.0f, 20.0f, 22.0f, world, true, NewPlayer));
-
+                CreateEntities.push_back(new EntityPlayer(9, 9 + NewPlayer, 1.0f, 2.0f, 20.0f, 20.0f, world, true, NewPlayer));
             }
 
             int DelPlayer = Manager.GetSocketDel();
@@ -299,6 +299,11 @@ int main()
             {
                 ConnectedPlayers.erase(DelPlayer);
                 NicknameMapping.erase(DelPlayer);
+
+                for (auto pEntity : UpdateEntities)
+                    if (pEntity->GetType() == EntityType::PLAYER)
+                        if (reinterpret_cast<EntityPlayer *>(pEntity)->GetSocket() == DelPlayer)
+                            DeleteEntities.push_back(pEntity);
 
                 Message("Player disconnected", MessageSource::SERVER, MessageSeverity::INFO);
             }
