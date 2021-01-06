@@ -127,7 +127,8 @@ struct Helper
 
 void KeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
-	pHelp->pManager->Push(Pack_ClientMove(key, *pHelp->pServerFd));
+	if (action == GLFW_PRESS)
+		pHelp->pManager->Push(Pack_ClientMove(key, *pHelp->pServerFd));
 }
 
 int main(int argc, char **argv)
