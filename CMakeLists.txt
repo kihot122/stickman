@@ -21,6 +21,9 @@ add_executable(Server
     src/Server.cpp
     src/net/NetManager.cpp
     src/game/Entity.cpp
+    src/physics/Box.cpp
+    src/physics/Ground.cpp
+    src/physics/ContactListener.cpp
     src/render/Renderer.cpp)
 
 add_executable(Testman 

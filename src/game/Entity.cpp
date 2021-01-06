@@ -32,7 +32,7 @@ EntityWall::EntityWall(uint16_t modelID, uint16_t targetID, float weight, float 
     TargetID = targetID;
     Dirty = dirty;
     Done = false;
-    wall = Ground(modelID, weight, height, xPos, yPos, world);
+    wall = new Ground(weight, height, xPos, yPos, world);
 }
 
 void EntityWall::Tick()
@@ -41,7 +41,7 @@ void EntityWall::Tick()
 
 std::vector<Renderer::Vertex> EntityWall::ModelCreateVertices()
 {
-    return wall.matrix;
+    return wall->matrix;
 }
 
 std::vector<uint16_t> EntityWall::ModelCreateIndices()
@@ -51,10 +51,10 @@ std::vector<uint16_t> EntityWall::ModelCreateIndices()
 
 glm::mat4 EntityWall::TargetUpdate()
 {
-    return glm::translate(glm::mat4(1.0f), glm::vec3(wall.getBody()->GetPosition().x, wall.getBody()->GetPosition().y, 0.0f));
+    return glm::translate(glm::mat4(1.0f), glm::vec3(wall->getBody()->GetPosition().x, wall->getBody()->GetPosition().y, 0.0f));
 }
 
-Ground getGroundEntity() {return wall;}
+Ground* EntityWall::getGroundEntity() {return wall;}
 
 EntityPlayer::EntityPlayer(uint16_t modelID, uint16_t targetID, float weight, float height, float xPos, float yPos, b2World* world, bool dirty)
 {
@@ -63,7 +63,7 @@ EntityPlayer::EntityPlayer(uint16_t modelID, uint16_t targetID, float weight, fl
     TargetID = targetID;
     Dirty = dirty;
     Done = false;
-    player = Box(modelID, weight, height, xPos, yPos, world);
+    player = new Box(weight, height, xPos, yPos, world);
 }
 void EntityPlayer::Tick()
 {
@@ -71,7 +71,7 @@ void EntityPlayer::Tick()
 
 std::vector<Renderer::Vertex> EntityPlayer::ModelCreateVertices()
 {
-    return player.matrix;
+    return player->matrix;
 }
 
 std::vector<uint16_t> EntityPlayer::ModelCreateIndices()
@@ -81,12 +81,12 @@ std::vector<uint16_t> EntityPlayer::ModelCreateIndices()
 
 glm::mat4 EntityPlayer::TargetUpdate()
 {
-    return glm::translate(glm::mat4(1.0f), glm::vec3(player.getBody()->GetPosition().x, player.getBody()->GetPosition().y, 0.0f));
+    return glm::translate(glm::mat4(1.0f), glm::vec3(player->getBody()->GetPosition().x, player->getBody()->GetPosition().y, 0.0f));
 }
 
-Box getGroundEntity() {return player;}
+Box* EntityPlayer::getGroundEntity() {return player;}
 
-EntityBullet::EntityBullet()
-{
-    Type = EntityType::BULLET;
-}
+// EntityBullet::EntityBullet()
+// {
+//     Type = EntityType::BULLET;
+// }

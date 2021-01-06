@@ -3,9 +3,10 @@
 #include <vector>
 
 #include "glm/glm.hpp"
-#include <box2d/box2d.h>
+#include "box2d/box2d.h"
 #include "../render/Renderer.hpp"
-#include "physics/Ground.hpp"
+#include "../physics/Ground.hpp"
+#include "../physics/Box.hpp"
 
 enum class EntityType
 {
@@ -40,7 +41,7 @@ public:
 
 class EntityWall : public Entity
 {
-    Ground wall;
+    Ground* wall;
 
 public:
     EntityWall(uint16_t modelID, uint16_t targetID, float weight, float height, float xPos, float yPos, b2World* world, bool dirty);
@@ -49,23 +50,23 @@ public:
     virtual std::vector<Renderer::Vertex> ModelCreateVertices();
     virtual std::vector<uint16_t> ModelCreateIndices();
     virtual glm::mat4 TargetUpdate();
-    Ground getGroundEntity();
+    Ground* getGroundEntity();
 };
 
 class EntityPlayer : public Entity
 {
-    Box player;
+    Box* player;
 public:
     EntityPlayer(uint16_t modelID, uint16_t targetID, float weight, float height, float xPos, float yPos, b2World* world, bool dirty);
     virtual void Tick();
     virtual std::vector<Renderer::Vertex> ModelCreateVertices();
     virtual std::vector<uint16_t> ModelCreateIndices();
     virtual glm::mat4 TargetUpdate();
-    Box getGroundEntity();
+    Box* getGroundEntity();
 };
 
-class EntityBullet : public EntityWall
-{
-public:
-    EntityBullet();
-};
+// class EntityBullet : public EntityWall
+// {
+// public:
+//     EntityBullet();
+// };

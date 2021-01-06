@@ -127,7 +127,7 @@ struct Helper
 
 void KeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
-	if (action == GLFW_PRESS)
+	if (action == GLFW_PRESS || action == GLFW_REPEAT)
 		pHelp->pManager->Push(Pack_ClientMove(key, *pHelp->pServerFd));
 }
 
@@ -159,7 +159,7 @@ int main(int argc, char **argv)
 
 	try
 	{
-		Rend.ViewTransformUpdate(glm::lookAt(glm::vec3(0.0f, 0.0f, 12.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)));
+		Rend.ViewTransformUpdate(glm::lookAt(glm::vec3(0.0f, 0.0f, 100.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)));
 
 		while (!glfwWindowShouldClose(Rend.GetWindowHandle()))
 		{

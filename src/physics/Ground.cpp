@@ -1,13 +1,12 @@
 #include "Ground.hpp"
 
-Ground::Ground(int ID_, float w_, float h_, float x_, float y_, b2World* world, glm::vec3 color){
+Ground::Ground(float w_, float h_, float x_, float y_, b2World* world){
     w = w_;
     h = h_;
     x = x_;
     y = y_;
-    ID = ID_;
     createBody(world);
-    makeMatrix(color);
+    makeMatrix();
 }
 
 void Ground::createBody(b2World* world){
@@ -24,8 +23,8 @@ void Ground::createBody(b2World* world){
 
 }
 
-void Ground::makeMatrix(glm::vec3 color){
-    glm::vec3 green = {0.0f, 1.0f, 0.0f};
+void Ground::makeMatrix(){
+    glm::vec3 color = {0.0f, 1.0f, 0.0f};
     matrix = {
         {{-k*w, -k*h}, color},
         {{k*w, -k*h}, color},

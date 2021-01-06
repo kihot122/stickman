@@ -8,6 +8,7 @@
 #include "aux/Messenger.hpp"
 #include "game/Entity.hpp"
 #include "net/NetManager.hpp"
+#include "box2d/box2d.h"
 
 const int64_t TickTime = std::pow(10, 9) / 64;
 
@@ -164,8 +165,23 @@ int main()
     std::vector<Entity *> UpdateEntities;
     std::vector<Entity *> CreateEntities;
     std::vector<Entity *> DeleteEntities;
+    b2Vec2 gravity(0.0f, -0.02f);
+    b2World *world = new b2World(gravity);
+    CreateEntities.push_back(new EntityWall(1, 1, 20.0f, 1.0f, 0.0f, -40.0f, world, false));
+    CreateEntities.push_back(new EntityWall(2, 2, 1.0f, 40.0f, -54.0f, 0.0f, world, false));
+    CreateEntities.push_back(new EntityWall(3, 3, 1.0f, 40.0f, 54.0f, 0.0f, world, false));
+    CreateEntities.push_back(new EntityWall(4, 4, 20.0f, 1.0f, 0.0f, 40.0f, world, false));
+    CreateEntities.push_back(new EntityWall(5, 5, 10.0f, 1.0f, 20.0f, 10.0f, world, false));
+    CreateEntities.push_back(new EntityWall(6, 6, 5.0f, 1.5f, -8.0f, 4.0f, world, false));
+    CreateEntities.push_back(new EntityWall(7, 7, 15.0f, 1.0f, -15.0f, -30.0f, world, false));
+    CreateEntities.push_back(new EntityWall(8, 8, 20.0f, 1.0f, -10.0f, -20.0f, world, false));
 
-    CreateEntities.push_back(new EntityWall());
+    enum _moveState {
+    MS_LEFT,
+    MS_RIGHT,
+    MS_UP
+  };
+    _moveState moveState;
 
     NetManager Manager("8303");
 
@@ -199,11 +215,25 @@ int main()
                 if (Packet->Type == GamePacketType::CLIENT_MOVE)
                 {
                     int a = Unpack_ClientMove(Packet);
+                    switch(a)
+                    {
+                        case GLFW_KEY_A:
+                            moveState = MS_LEFT;
+                        break;
+                        case GLFW_KEY_D:
+                            moveState = MS_RIGHT;
+                        break;
+                        case GLFW_KEY_W:
+                            moveState = MS_UP;
+                        break;
+                        
+                    }
                     Message(std::to_string(a), MessageSource::SERVER, MessageSeverity::INFO);
                 }
 
                 delete Packet;
             }
+            //world.step
 
             for (auto pEntity : CreateEntities)
             {
@@ -267,6 +297,8 @@ int main()
                 Manager.Push(Pack_ServerModelCreateBulk(TickingEntities, NewPlayer));
                 Manager.Push(Pack_ServerTargetCreateBulk(TickingEntities, NewPlayer));
                 Manager.Push(Pack_ServerTargetUpdateBulk(TickingEntities, NewPlayer));
+
+                //create entity -nowy gracz
             }
 
             int DelPlayer = Manager.GetSocketDel();
