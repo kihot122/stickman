@@ -30,11 +30,9 @@ add_executable(Testman
     src/physics/ContactListener.cpp
     src/render/Renderer.cpp)
 
-
-
 target_link_libraries(Client pthread ${Vulkan_LIBRARIES} glfw unofficial::box2d::box2d)
+target_link_libraries(Server pthread ${Vulkan_LIBRARIES} glfw unofficial::box2d::box2d)
 target_link_libraries(Testman pthread ${Vulkan_LIBRARIES} glfw unofficial::box2d::box2d)
-target_link_libraries(Server pthread ${Vulkan_LIBRARIES} glfw)
 
 add_custom_command(TARGET Client POST_BUILD COMMAND ${CMAKE_SOURCE_DIR}/src/script/compileshader.sh WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
