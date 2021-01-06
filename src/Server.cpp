@@ -209,9 +209,9 @@ int main()
             {
                 for (int Player : ConnectedPlayers)
                 {
-                    Manager.Push(Pack_ServerModelCreateBulk(TickingEntities, Player));
-                    Manager.Push(Pack_ServerTargetCreateBulk(TickingEntities, Player));
-                    Manager.Push(Pack_ServerTargetUpdateBulk(TickingEntities, Player));
+                    Manager.Push(Pack_ServerModelCreateBulk(CreateEntities, Player));
+                    Manager.Push(Pack_ServerTargetCreateBulk(CreateEntities, Player));
+                    Manager.Push(Pack_ServerTargetUpdateBulk(CreateEntities, Player));
                 }
 
                 TickingEntities.insert(TickingEntities.end(), CreateEntities.begin(), CreateEntities.end());
@@ -231,6 +231,10 @@ int main()
                 }
                 iter++;
             }
+
+            for (auto pEntity : DeleteEntities)
+                for (int Player : ConnectedPlayers)
+                    Manager.Push(Pack_ServerTargetRemoveBulk(DeleteEntities, Player));
 
             for (int Player : ConnectedPlayers)
                 Manager.Push(Pack_ServerTargetUpdateBulk(UpdateEntities, Player));

@@ -1195,6 +1195,9 @@ Renderer::~Renderer()
 
 void Renderer::RenderModelCreate(uint16_t ID, const RenderModel &Model)
 {
+    if (mRenderModels.contains(ID))
+        return;
+
     mRenderModels.emplace(ID, Model);
     mRenderModelsDirty = true;
 }
