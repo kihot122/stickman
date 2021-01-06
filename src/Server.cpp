@@ -176,11 +176,12 @@ int main()
     CreateEntities.push_back(new EntityWall(7, 7, 15.0f, 1.0f, -15.0f, -30.0f, world, false));
     CreateEntities.push_back(new EntityWall(8, 8, 20.0f, 1.0f, -10.0f, -20.0f, world, false));
 
-    enum _moveState {
-    MS_LEFT,
-    MS_RIGHT,
-    MS_UP
-  };
+    enum _moveState
+    {
+        MS_LEFT,
+        MS_RIGHT,
+        MS_UP
+    };
     _moveState moveState;
 
     NetManager Manager("8303");
@@ -215,18 +216,17 @@ int main()
                 if (Packet->Type == GamePacketType::CLIENT_MOVE)
                 {
                     int a = Unpack_ClientMove(Packet);
-                    switch(a)
+                    switch (a)
                     {
                         case GLFW_KEY_A:
                             moveState = MS_LEFT;
-                        break;
+                            break;
                         case GLFW_KEY_D:
                             moveState = MS_RIGHT;
-                        break;
+                            break;
                         case GLFW_KEY_W:
                             moveState = MS_UP;
-                        break;
-                        
+                            break;
                     }
                     Message(std::to_string(a), MessageSource::SERVER, MessageSeverity::INFO);
                 }
@@ -254,8 +254,9 @@ int main()
             for (auto pEntity : TickingEntities)
                 pEntity->Tick();
 
-            for (int Player : ConnectedPlayers)
-                Manager.Push(Pack_ServerTargetUpdateBulk(UpdateEntities, Player));
+            if (UpdateEntities.size())
+                for (int Player : ConnectedPlayers)
+                    Manager.Push(Pack_ServerTargetUpdateBulk(UpdateEntities, Player));
 
             for (auto iter = TickingEntities.begin(); iter != TickingEntities.end();)
             {
