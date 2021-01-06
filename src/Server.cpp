@@ -207,19 +207,25 @@ int main()
 
             for (auto pEntity : CreateEntities)
             {
+                if (pEntity->IsDirty())
+                    UpdateEntities.push_back(pEntity);
+
                 for (int Player : ConnectedPlayers)
                 {
                     Manager.Push(Pack_ServerModelCreateBulk(CreateEntities, Player));
                     Manager.Push(Pack_ServerTargetCreateBulk(CreateEntities, Player));
                     Manager.Push(Pack_ServerTargetUpdateBulk(CreateEntities, Player));
                 }
-
-                TickingEntities.insert(TickingEntities.end(), CreateEntities.begin(), CreateEntities.end());
-                CreateEntities.clear();
             }
+
+            TickingEntities.insert(TickingEntities.end(), CreateEntities.begin(), CreateEntities.end());
+            CreateEntities.clear();
 
             for (auto pEntity : TickingEntities)
                 pEntity->Tick();
+
+            for (int Player : ConnectedPlayers)
+                Manager.Push(Pack_ServerTargetUpdateBulk(UpdateEntities, Player));
 
             for (auto iter = TickingEntities.begin(); iter != TickingEntities.end();)
             {
@@ -232,16 +238,25 @@ int main()
                 iter++;
             }
 
+            for (auto iter = UpdateEntities.begin(); iter != UpdateEntities.end();)
+            {
+                if ((*iter)->IsDone())
+                {
+                    iter = TickingEntities.erase(iter);
+                    continue;
+                }
+                iter++;
+            }
+
             for (auto pEntity : DeleteEntities)
             {
                 for (int Player : ConnectedPlayers)
                     Manager.Push(Pack_ServerTargetRemoveBulk(DeleteEntities, Player));
 
-                DeleteEntities.clear();
+                delete pEntity;
             }
 
-            for (int Player : ConnectedPlayers)
-                Manager.Push(Pack_ServerTargetUpdateBulk(UpdateEntities, Player));
+            DeleteEntities.clear();
 
             int NewPlayer = Manager.GetSocketNew();
             if (NewPlayer != -1)
