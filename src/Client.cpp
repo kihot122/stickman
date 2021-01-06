@@ -119,6 +119,17 @@ void Chat(NetManager *Manager, int ServerFd)
 	}
 }
 
+struct Helper
+{
+	NetManager *pManager;
+	int *pServerFd;
+} * pHelp;
+
+void KeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
+{
+	pHelp->pManager->Push(Pack_ClientMove(key, *pHelp->pServerFd));
+}
+
 int main(int argc, char **argv)
 {
 	if (argc != 5)
@@ -142,6 +153,9 @@ int main(int argc, char **argv)
 
 	std::thread ChatThread(Chat, &Manager, ServerFd);
 
+	pHelp = new Helper{&Manager, &ServerFd};
+	glfwSetKeyCallback(Rend.GetWindowHandle(), KeyCallback);
+
 	try
 	{
 		Rend.ViewTransformUpdate(glm::lookAt(glm::vec3(0.0f, 0.0f, 12.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)));
@@ -151,8 +165,6 @@ int main(int argc, char **argv)
 			if (State == NetState::NET_INIT)
 			{
 				Manager.Push(new GamePacket{GamePacketType::CLIENT_NICKNAME, ServerFd, std::vector<uint8_t>(Nick.begin(), Nick.end())});
-				Manager.Push(Pack_ClientMove(280, ServerFd));
-
 				State = NetState::NET_GAME;
 			}
 
