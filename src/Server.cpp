@@ -170,7 +170,7 @@ int main()
     CreateEntities.push_back(new EntityWall(1, 1, 20.0f, 1.0f, 0.0f, -40.0f, world, false));
     CreateEntities.push_back(new EntityWall(2, 2, 1.0f, 40.0f, -54.0f, 0.0f, world, false));
     CreateEntities.push_back(new EntityWall(3, 3, 1.0f, 40.0f, 54.0f, 0.0f, world, false));
-    CreateEntities.push_back(new EntityWall(4, 4, 20.0f, 1.0f, 0.0f, 40.0f, world, false));
+    CreateEntities.push_back(new EntityWall(4, 4, 40.0f, 1.0f, 0.0f, 40.0f, world, false));
     CreateEntities.push_back(new EntityWall(5, 5, 10.0f, 1.0f, 20.0f, 10.0f, world, false));
     CreateEntities.push_back(new EntityWall(6, 6, 5.0f, 1.5f, -8.0f, 4.0f, world, false));
     CreateEntities.push_back(new EntityWall(7, 7, 15.0f, 1.0f, -15.0f, -30.0f, world, false));
@@ -299,6 +299,7 @@ int main()
                 Manager.Push(Pack_ServerTargetUpdateBulk(TickingEntities, NewPlayer));
 
                 //create entity -nowy gracz
+                CreateEntities.push_back(new EntityPlayer(9, 9, 1.0f, 2.0f, 20.0f, 20.0f, world, true));
             }
 
             int DelPlayer = Manager.GetSocketDel();
