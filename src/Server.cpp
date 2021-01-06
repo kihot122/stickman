@@ -102,6 +102,21 @@ GamePacket *Pack_ServerTargetUpdateBulk(std::vector<Entity *> &pEntities, int De
     return new GamePacket{GamePacketType::SERVER_TARGET_UPDATE_BULK, DestinationFd, PacketData};
 }
 
+GamePacket *Pack_ServerTargetRemoveBulk(std::vector<Entity *> &pEntities, int DestinationFd)
+{
+    std::vector<uint8_t> PacketData;
+
+    for (auto pEntity : pEntities)
+    {
+        uint16_t TargetID = pEntity->GetTargetID();
+        uint8_t *ParsedTargetID = reinterpret_cast<uint8_t *>(&TargetID);
+
+        PacketData.insert(PacketData.end(), ParsedTargetID, ParsedTargetID + sizeof(uint16_t));
+    }
+
+    return new GamePacket{GamePacketType::SERVER_TARGET_REMOVE_BULK, DestinationFd, PacketData};
+}
+
 int main()
 {
     std::vector<Entity *> vEnt;
@@ -146,6 +161,8 @@ int main()
                 {
                     for (int Player : ConnectedPlayers)
                         Manager.Push(new GamePacket{GamePacketType::SERVER_ECHO_MESSAGE, Player, Packet->Data});
+
+                    Manager.Push(Pack_ServerTargetRemoveBulk(vEnt, Packet->Socket));
                 }
 
                 delete Packet;

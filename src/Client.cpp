@@ -66,6 +66,17 @@ void Unpack_ServerTargetUpdateBulk(GamePacket *Packet, Renderer &Backend)
 	}
 }
 
+void Unpack_ServerTargetDeleteBulk(GamePacket *Packet, Renderer &Backend)
+{
+	for (auto iter = Packet->Data.begin(); iter != Packet->Data.end();)
+	{
+		uint16_t TargetID = *reinterpret_cast<uint16_t *>(&(*iter));
+		iter += sizeof(uint16_t);
+
+		Backend.RenderTargetDelete(TargetID);
+	}
+}
+
 void Chat(NetManager *Manager, int ServerFd)
 {
 	std::string Msg;
@@ -123,6 +134,12 @@ int main()
 				{
 					Message("Target update bulk", MessageSource::CLIENT, MessageSeverity::INFO);
 					Unpack_ServerTargetUpdateBulk(Packet, Rend);
+				}
+
+				if (Packet->Type == GamePacketType::SERVER_TARGET_REMOVE_BULK)
+				{
+					Message("Target remove bulk", MessageSource::CLIENT, MessageSeverity::INFO);
+					Unpack_ServerTargetDeleteBulk(Packet, Rend);
 				}
 
 				delete Packet;
