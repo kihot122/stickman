@@ -160,9 +160,12 @@ GamePacket *Pack_ServerEchoMessage(GamePacket *Msg, std::map<int, std::string> &
 
 int main()
 {
-    std::vector<Entity *> vEnt;
-    vEnt.push_back(new EntityWall());
-    // vEnt.push_back(new EntityWall());
+    std::vector<Entity *> TickingEntities;
+    std::vector<Entity *> UpdateEntities;
+    std::vector<Entity *> CreateEntities;
+    std::vector<Entity *> DeleteEntities;
+
+    TickingEntities.push_back(new EntityWall());
 
     NetManager Manager("8303");
 
@@ -177,15 +180,32 @@ int main()
         {
             DiscreteTime += std::chrono::nanoseconds(TickTime);
 
+            for (auto pEntity : TickingEntities)
+                pEntity->Tick();
+
+            for (auto iter = TickingEntities.begin(); iter != TickingEntities.end();)
+            {
+                if ((*iter)->IsDone())
+                {
+                    DeleteEntities.push_back(*iter);
+                    iter = TickingEntities.erase(iter);
+                    continue;
+                }
+                iter++;
+            }
+
+            for (int Player : ConnectedPlayers)
+                Manager.Push(Pack_ServerTargetUpdateBulk(UpdateEntities, Player));
+
             int NewPlayer = Manager.GetSocketNew();
             if (NewPlayer != -1)
             {
                 ConnectedPlayers.emplace(NewPlayer);
                 Message("Player connected", MessageSource::SERVER, MessageSeverity::INFO);
 
-                Manager.Push(Pack_ServerModelCreateBulk(vEnt, NewPlayer));
-                Manager.Push(Pack_ServerTargetCreateBulk(vEnt, NewPlayer));
-                Manager.Push(Pack_ServerTargetUpdateBulk(vEnt, NewPlayer));
+                Manager.Push(Pack_ServerModelCreateBulk(TickingEntities, NewPlayer));
+                Manager.Push(Pack_ServerTargetCreateBulk(TickingEntities, NewPlayer));
+                Manager.Push(Pack_ServerTargetUpdateBulk(TickingEntities, NewPlayer));
             }
 
             int DelPlayer = Manager.GetSocketDel();
