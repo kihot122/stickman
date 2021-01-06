@@ -20,6 +20,7 @@ protected:
     uint16_t ModelID;
     uint16_t TargetID;
     bool Dirty;
+    bool Done;
 
 public:
     virtual void Tick() = 0;
@@ -31,6 +32,7 @@ public:
     uint16_t GetModelID();
     uint16_t GetTargetID();
     bool IsDirty();
+    bool IsDone();
 };
 
 class EntityWall : public Entity

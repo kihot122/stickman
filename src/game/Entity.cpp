@@ -20,6 +20,11 @@ bool Entity::IsDirty()
     return Dirty;
 }
 
+bool Entity::IsDone()
+{
+    return Done;
+}
+
 EntityWall::EntityWall()
 {
     Type = EntityType::WALL;
