@@ -68,7 +68,7 @@ void NetManager::Send()
             std::memcpy(Data + sizeof(GamePacketType), &static_cast<const uint64_t &>(Packet->Data.size()), sizeof(uint64_t));
             std::memcpy(Data + sizeof(GamePacketType) + sizeof(uint64_t), Packet->Data.data(), Packet->Data.size());
 
-            if (write(Packet->Socket, Data, Size) <= 0)
+            if (send(Packet->Socket, Data, Size, MSG_NOSIGNAL) <= 0)
             {
                 Message(std::to_string(errno), MessageSource::NET, MessageSeverity::WARNING);
             }
