@@ -14,6 +14,12 @@ enum class EntityType
     PLAYER,
     BULLET,
 };
+enum _moveState
+    {
+        MS_LEFT,
+        MS_RIGHT,
+        MS_UP
+    };
 
 class Entity
 {
@@ -56,17 +62,16 @@ public:
 class EntityPlayer : public Entity
 {
     Box* player;
+    int socket;
 public:
-    EntityPlayer(uint16_t modelID, uint16_t targetID, float weight, float height, float xPos, float yPos, b2World* world, bool dirty);
+    _moveState moveState;
+    EntityPlayer(uint16_t modelID, uint16_t targetID, float weight, float height, float xPos, float yPos, b2World* world, bool dirty, int socket_);
     virtual void Tick();
     virtual std::vector<Renderer::Vertex> ModelCreateVertices();
     virtual std::vector<uint16_t> ModelCreateIndices();
     virtual glm::mat4 TargetUpdate();
-    Box* getGroundEntity();
+    void SetSocketToPlayer();
+    int GetSocket();
+    void SetAction(int key);
+    Box* GetGroundEntity();
 };
-
-// class EntityBullet : public EntityWall
-// {
-// public:
-//     EntityBullet();
-// };

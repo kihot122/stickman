@@ -11,6 +11,7 @@
 #include "box2d/box2d.h"
 
 const int64_t TickTime = std::pow(10, 9) / 64;
+const float TickStep = 1.0f/64.0f;
 
 int Unpack_ClientMove(GamePacket *Packet)
 {
@@ -165,24 +166,16 @@ int main()
     std::vector<Entity *> UpdateEntities;
     std::vector<Entity *> CreateEntities;
     std::vector<Entity *> DeleteEntities;
-    b2Vec2 gravity(0.0f, -0.02f);
+    b2Vec2 gravity(0.0f, -9.81f);
     b2World *world = new b2World(gravity);
     CreateEntities.push_back(new EntityWall(1, 1, 20.0f, 1.0f, 0.0f, -40.0f, world, false));
     CreateEntities.push_back(new EntityWall(2, 2, 1.0f, 40.0f, -54.0f, 0.0f, world, false));
     CreateEntities.push_back(new EntityWall(3, 3, 1.0f, 40.0f, 54.0f, 0.0f, world, false));
-    CreateEntities.push_back(new EntityWall(4, 4, 40.0f, 1.0f, 0.0f, 40.0f, world, false));
+    CreateEntities.push_back(new EntityWall(4, 4, 50.0f, 1.0f, 0.0f, 40.0f, world, false));
     CreateEntities.push_back(new EntityWall(5, 5, 10.0f, 1.0f, 20.0f, 10.0f, world, false));
     CreateEntities.push_back(new EntityWall(6, 6, 5.0f, 1.5f, -8.0f, 4.0f, world, false));
     CreateEntities.push_back(new EntityWall(7, 7, 15.0f, 1.0f, -15.0f, -30.0f, world, false));
     CreateEntities.push_back(new EntityWall(8, 8, 20.0f, 1.0f, -10.0f, -20.0f, world, false));
-
-    enum _moveState
-    {
-        MS_LEFT,
-        MS_RIGHT,
-        MS_UP
-    };
-    _moveState moveState;
 
     NetManager Manager("8303");
 
@@ -200,7 +193,7 @@ int main()
             std::vector<GamePacket *> Packets = Manager.Pull();
             for (auto &Packet : Packets)
             {
-                Message("Packet type: " + std::string(magic_enum::enum_name(Packet->Type)), MessageSource::SERVER, MessageSeverity::INFO);
+                //Message("Packet type: " + std::string(magic_enum::enum_name(Packet->Type)), MessageSource::SERVER, MessageSeverity::INFO);
 
                 if (Packet->Type == GamePacketType::CLIENT_MESSAGE)
                 {
@@ -215,25 +208,22 @@ int main()
 
                 if (Packet->Type == GamePacketType::CLIENT_MOVE)
                 {
-                    int a = Unpack_ClientMove(Packet);
-                    switch (a)
+                    for(auto pEntity : UpdateEntities)
                     {
-                        case GLFW_KEY_A:
-                            moveState = MS_LEFT;
-                            break;
-                        case GLFW_KEY_D:
-                            moveState = MS_RIGHT;
-                            break;
-                        case GLFW_KEY_W:
-                            moveState = MS_UP;
-                            break;
+                        if(pEntity->GetType() == EntityType::PLAYER)
+                        {   
+                            if(reinterpret_cast<EntityPlayer*>(pEntity)->GetSocket() == Packet->Socket)
+                            {
+                                reinterpret_cast<EntityPlayer*>(pEntity)->SetAction(Unpack_ClientMove(Packet));
+                            } 
+                        }
                     }
-                    Message(std::to_string(a), MessageSource::SERVER, MessageSeverity::INFO);
                 }
 
                 delete Packet;
             }
             //world.step
+            world->Step(TickStep, 6, 2);
 
             for (auto pEntity : CreateEntities)
             {
@@ -300,7 +290,8 @@ int main()
                 Manager.Push(Pack_ServerTargetUpdateBulk(TickingEntities, NewPlayer));
 
                 //create entity -nowy gracz
-                CreateEntities.push_back(new EntityPlayer(9, 9, 1.0f, 2.0f, 20.0f, 20.0f, world, true));
+                CreateEntities.push_back(new EntityPlayer(9, 9, 1.0f, 2.0f, 20.0f, 22.0f, world, true, NewPlayer));
+
             }
 
             int DelPlayer = Manager.GetSocketDel();

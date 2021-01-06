@@ -129,6 +129,8 @@ void KeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
 {
 	if (action == GLFW_PRESS || action == GLFW_REPEAT)
 		pHelp->pManager->Push(Pack_ClientMove(key, *pHelp->pServerFd));
+	else if (action == GLFW_RELEASE)
+		pHelp->pManager->Push(Pack_ClientMove(1000, *pHelp->pServerFd));
 }
 
 int main(int argc, char **argv)
@@ -196,7 +198,7 @@ int main(int argc, char **argv)
 
 					if (Packet->Type == GamePacketType::SERVER_TARGET_UPDATE_BULK)
 					{
-						Message("Target update bulk", MessageSource::CLIENT, MessageSeverity::INFO);
+						//Message("Target update bulk", MessageSource::CLIENT, MessageSeverity::INFO);
 						Unpack_ServerTargetUpdateBulk(Packet, Rend);
 					}
 
