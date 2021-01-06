@@ -15,7 +15,6 @@ uint16_t Entity::GetTargetID()
     return TargetID;
 }
 
-EntityWall::EntityWall(uint16_t modelID, uint16_t targetID)
 bool Entity::IsDirty()
 {
     return Dirty;
@@ -26,11 +25,14 @@ bool Entity::IsDone()
     return Done;
 }
 
-EntityWall::EntityWall()
+EntityWall::EntityWall(uint16_t modelID, uint16_t targetID, float weight, float height, float xPos, float yPos, b2World* world, bool dirty)
 {
     Type = EntityType::WALL;
     ModelID = modelID;
     TargetID = targetID;
+    Dirty = dirty;
+    Done = false;
+    wall = Ground(modelID, weight, height, xPos, yPos, world);
 }
 
 void EntityWall::Tick()
@@ -39,11 +41,7 @@ void EntityWall::Tick()
 
 std::vector<Renderer::Vertex> EntityWall::ModelCreateVertices()
 {
-    return std::vector<Renderer::Vertex>{
-        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-        {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-        {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-        {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
+    return wall.matrix;
 }
 
 std::vector<uint16_t> EntityWall::ModelCreateIndices()
@@ -53,13 +51,40 @@ std::vector<uint16_t> EntityWall::ModelCreateIndices()
 
 glm::mat4 EntityWall::TargetUpdate()
 {
-    return glm::rotate(glm::mat4(1.0f), glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    return glm::translate(glm::mat4(1.0f), glm::vec3(wall.getBody()->GetPosition().x, wall.getBody()->GetPosition().y, 0.0f));
 }
 
-EntityPlayer::EntityPlayer()
+Ground getGroundEntity() {return wall;}
+
+EntityPlayer::EntityPlayer(uint16_t modelID, uint16_t targetID, float weight, float height, float xPos, float yPos, b2World* world, bool dirty)
 {
     Type = EntityType::PLAYER;
+    ModelID = modelID;
+    TargetID = targetID;
+    Dirty = dirty;
+    Done = false;
+    player = Box(modelID, weight, height, xPos, yPos, world);
 }
+void EntityPlayer::Tick()
+{
+}
+
+std::vector<Renderer::Vertex> EntityPlayer::ModelCreateVertices()
+{
+    return player.matrix;
+}
+
+std::vector<uint16_t> EntityPlayer::ModelCreateIndices()
+{
+    return std::vector<uint16_t>{0, 1, 2, 2, 3, 0};
+}
+
+glm::mat4 EntityPlayer::TargetUpdate()
+{
+    return glm::translate(glm::mat4(1.0f), glm::vec3(player.getBody()->GetPosition().x, player.getBody()->GetPosition().y, 0.0f));
+}
+
+Box getGroundEntity() {return player;}
 
 EntityBullet::EntityBullet()
 {

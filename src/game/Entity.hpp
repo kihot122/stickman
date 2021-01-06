@@ -38,20 +38,28 @@ public:
 
 class EntityWall : public Entity
 {
-    
+    Ground wall;
+
 public:
-    EntityWall(uint16_t modelID, uint16_t targetID);
+    EntityWall(uint16_t modelID, uint16_t targetID, float weight, float height, float xPos, float yPos, b2World* world, bool dirty);
 
     virtual void Tick();
     virtual std::vector<Renderer::Vertex> ModelCreateVertices();
     virtual std::vector<uint16_t> ModelCreateIndices();
     virtual glm::mat4 TargetUpdate();
+    Ground getGroundEntity();
 };
 
-class EntityPlayer : public EntityWall
+class EntityPlayer : public Entity
 {
+    Box player;
 public:
-    EntityPlayer();
+    EntityPlayer(uint16_t modelID, uint16_t targetID, float weight, float height, float xPos, float yPos, b2World* world, bool dirty);
+    virtual void Tick();
+    virtual std::vector<Renderer::Vertex> ModelCreateVertices();
+    virtual std::vector<uint16_t> ModelCreateIndices();
+    virtual glm::mat4 TargetUpdate();
+    Box getGroundEntity();
 };
 
 class EntityBullet : public EntityWall
