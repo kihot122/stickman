@@ -232,7 +232,7 @@ int main()
                 if ((*iter)->IsDone())
                 {
                     DeleteEntities.push_back(*iter);
-                    iter = TickingEntities.erase(iter);
+                    iter = UpdateEntities.erase(iter);
                     continue;
                 }
                 iter++;

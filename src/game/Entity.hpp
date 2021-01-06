@@ -24,6 +24,8 @@ protected:
     bool Done;
 
 public:
+    virtual ~Entity(){};
+
     virtual void Tick() = 0;
     virtual std::vector<Renderer::Vertex> ModelCreateVertices() = 0;
     virtual std::vector<uint16_t> ModelCreateIndices() = 0;
