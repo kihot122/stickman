@@ -15,11 +15,11 @@ uint16_t Entity::GetTargetID()
     return TargetID;
 }
 
-EntityWall::EntityWall()
+EntityWall::EntityWall(uint16_t modelID, uint16_t targetID)
 {
     Type = EntityType::WALL;
-    ModelID = 1001;
-    TargetID = 1001;
+    ModelID = modelID;
+    TargetID = targetID;
 }
 
 void EntityWall::Tick()

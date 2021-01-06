@@ -3,8 +3,9 @@
 #include <vector>
 
 #include "glm/glm.hpp"
-
+#include <box2d/box2d.h>
 #include "../render/Renderer.hpp"
+#include "physics/Ground.hpp"
 
 enum class EntityType
 {
@@ -34,7 +35,7 @@ public:
 class EntityWall : public Entity
 {
 public:
-    EntityWall();
+    EntityWall(uint16_t modelID, uint16_t targetID);
 
     virtual void Tick();
     virtual std::vector<Renderer::Vertex> ModelCreateVertices();
