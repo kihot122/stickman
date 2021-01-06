@@ -16,6 +16,12 @@ uint16_t Entity::GetTargetID()
 }
 
 EntityWall::EntityWall(uint16_t modelID, uint16_t targetID)
+bool Entity::IsDirty()
+{
+    return Dirty;
+}
+
+EntityWall::EntityWall()
 {
     Type = EntityType::WALL;
     ModelID = modelID;
