@@ -23,11 +23,16 @@ add_executable(Server
 
 add_executable(Testman 
     src/Testman.cpp 
-    src/net/NetManager.cpp)
+    src/physics/Box.cpp
+    src/physics/Ground.cpp
+    src/physics/ContactListener.cpp
+    src/render/Renderer.cpp)
+
+
 
 target_link_libraries(Client pthread ${Vulkan_LIBRARIES} glfw unofficial::box2d::box2d)
 target_link_libraries(Server pthread)
-target_link_libraries(Testman pthread)
+target_link_libraries(Testman pthread ${Vulkan_LIBRARIES} glfw unofficial::box2d::box2d)
 
 add_custom_command(TARGET Client POST_BUILD COMMAND ${CMAKE_SOURCE_DIR}/src/script/compileshader.sh WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
