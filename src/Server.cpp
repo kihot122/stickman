@@ -2,6 +2,7 @@
 #include <cmath>
 #include <cstring>
 #include <iostream>
+#include <map>
 #include <set>
 
 #include "aux/Messenger.hpp"
@@ -9,6 +10,11 @@
 #include "net/NetManager.hpp"
 
 const int64_t TickTime = std::pow(10, 9) / 64;
+
+int Unpack_ClientMove(GamePacket *Packet)
+{
+    return static_cast<int>(*reinterpret_cast<uint16_t *>(&(*Packet->Data.begin())));
+}
 
 GamePacket *Pack_ServerModelCreateBulk(std::vector<Entity *> &pEntities, int DestinationFd)
 {
@@ -64,6 +70,21 @@ GamePacket *Pack_ServerModelCreateBulk(std::vector<Entity *> &pEntities, int Des
     return new GamePacket{GamePacketType::SERVER_MODEL_CREATE_BULK, DestinationFd, PacketData};
 }
 
+GamePacket *Pack_ServerModelDeleteBulk(std::vector<Entity *> &pEntities, int DestinationFd)
+{
+    std::vector<uint8_t> PacketData;
+
+    for (auto pEntity : pEntities)
+    {
+        uint16_t ModelID = pEntity->GetModelID();
+        uint8_t *ParsedModelID = reinterpret_cast<uint8_t *>(&ModelID);
+
+        PacketData.insert(PacketData.end(), ParsedModelID, ParsedModelID + sizeof(uint16_t));
+    }
+
+    return new GamePacket{GamePacketType::SERVER_MODEL_REMOVE_BULK, DestinationFd, PacketData};
+}
+
 GamePacket *Pack_ServerTargetCreateBulk(std::vector<Entity *> &pEntities, int DestinationFd)
 {
     std::vector<uint8_t> PacketData;
@@ -117,6 +138,26 @@ GamePacket *Pack_ServerTargetRemoveBulk(std::vector<Entity *> &pEntities, int De
     return new GamePacket{GamePacketType::SERVER_TARGET_REMOVE_BULK, DestinationFd, PacketData};
 }
 
+GamePacket *Pack_ServerViewUpdate(glm::mat4 Matrix, int DestinationFd)
+{
+    std::vector<uint8_t> PacketData;
+    uint8_t *ParsedMatrix = reinterpret_cast<uint8_t *>(&Matrix);
+    PacketData.insert(PacketData.end(), ParsedMatrix, ParsedMatrix + sizeof(glm::mat4));
+
+    return new GamePacket{GamePacketType::SERVER_VIEW_UPDATE, DestinationFd, PacketData};
+}
+
+GamePacket *Pack_ServerEchoMessage(GamePacket *Msg, std::map<int, std::string> &NicknameMapping, int DestinationFd)
+{
+    std::vector<uint8_t> PacketData;
+
+    PacketData.insert(PacketData.end(), NicknameMapping[Msg->Socket].begin(), NicknameMapping[Msg->Socket].end());
+    PacketData.push_back(':');
+    PacketData.insert(PacketData.end(), Msg->Data.begin(), Msg->Data.end());
+
+    return new GamePacket{GamePacketType::SERVER_ECHO_MESSAGE, DestinationFd, PacketData};
+}
+
 int main()
 {
     std::vector<Entity *> vEnt;
@@ -124,7 +165,10 @@ int main()
     // vEnt.push_back(new EntityWall());
 
     NetManager Manager("8303");
+
     std::set<int> ConnectedPlayers;
+    std::map<int, std::string> NicknameMapping;
+
     auto DiscreteTime = std::chrono::high_resolution_clock::now();
 
     while (true)
@@ -132,7 +176,6 @@ int main()
         if (std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - DiscreteTime).count() >= TickTime)
         {
             DiscreteTime += std::chrono::nanoseconds(TickTime);
-            // std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - DiscreteTime).count() << std::endl;
 
             int NewPlayer = Manager.GetSocketNew();
             if (NewPlayer != -1)
@@ -149,6 +192,8 @@ int main()
             if (DelPlayer != -1)
             {
                 ConnectedPlayers.erase(DelPlayer);
+                NicknameMapping.erase(DelPlayer);
+
                 Message("Player disconnected", MessageSource::SERVER, MessageSeverity::INFO);
             }
 
@@ -160,9 +205,18 @@ int main()
                 if (Packet->Type == GamePacketType::CLIENT_MESSAGE)
                 {
                     for (int Player : ConnectedPlayers)
-                        Manager.Push(new GamePacket{GamePacketType::SERVER_ECHO_MESSAGE, Player, Packet->Data});
+                        Manager.Push(Pack_ServerEchoMessage(Packet, NicknameMapping, Player));
+                }
 
-                    Manager.Push(Pack_ServerTargetRemoveBulk(vEnt, Packet->Socket));
+                if (Packet->Type == GamePacketType::CLIENT_NICKNAME)
+                {
+                    NicknameMapping.emplace(Packet->Socket, std::string(Packet->Data.begin(), Packet->Data.end()));
+                }
+
+                if (Packet->Type == GamePacketType::CLIENT_MOVE)
+                {
+                    int a = Unpack_ClientMove(Packet);
+                    Message(std::to_string(a), MessageSource::SERVER, MessageSeverity::INFO);
                 }
 
                 delete Packet;

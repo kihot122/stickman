@@ -6,6 +6,21 @@
 #include "net/NetManager.hpp"
 #include "render/Renderer.hpp"
 
+enum class NetState
+{
+	NET_INIT,
+	NET_GAME,
+};
+
+GamePacket *Pack_ClientMove(int Move, int DestinationFd)
+{
+	std::vector<uint8_t> PacketData;
+	uint8_t *KeyID = reinterpret_cast<uint8_t *>(&Move);
+	PacketData.insert(PacketData.end(), KeyID, KeyID + sizeof(uint16_t));
+
+	return new GamePacket{GamePacketType::CLIENT_MOVE, DestinationFd, PacketData};
+}
+
 void Unpack_ServerModelCreateBulk(GamePacket *Packet, Renderer &Backend)
 {
 	for (auto iter = Packet->Data.begin(); iter != Packet->Data.end();)
@@ -35,6 +50,17 @@ void Unpack_ServerModelCreateBulk(GamePacket *Packet, Renderer &Backend)
 		}
 
 		Backend.RenderModelCreate(ModelID, Renderer::RenderModel(V, I));
+	}
+}
+
+void Unpack_ServerModelRemoveBulk(GamePacket *Packet, Renderer &Backend)
+{
+	for (auto iter = Packet->Data.begin(); iter != Packet->Data.end();)
+	{
+		uint16_t ModelID = *reinterpret_cast<uint16_t *>(&(*iter));
+		iter += sizeof(uint16_t);
+
+		Backend.RenderModelDelete(ModelID);
 	}
 }
 
@@ -77,6 +103,12 @@ void Unpack_ServerTargetDeleteBulk(GamePacket *Packet, Renderer &Backend)
 	}
 }
 
+void Unpack_ServerViewUpdate(GamePacket *Packet, Renderer &Backend)
+{
+	glm::mat4 Matrix = *reinterpret_cast<glm::mat4 *>(&(*Packet->Data.begin()));
+	Backend.ViewTransformUpdate(Matrix);
+}
+
 void Chat(NetManager *Manager, int ServerFd)
 {
 	std::string Msg;
@@ -87,19 +119,22 @@ void Chat(NetManager *Manager, int ServerFd)
 	}
 }
 
-int main()
+int main(int argc, char **argv)
 {
+	if (argc != 5)
+		exit(1);
+
 	Renderer Rend;
 
-	std::string Port;
-	int a = 0;
-	if (a == 0)
-		Port = "8304";
-	else
-		Port = "8305";
+	std::string IP(argv[1]);
+	std::string DstPort(argv[2]);
+	std::string SrcPort(argv[3]);
+	std::string Nick(argv[4]);
 
-	NetManager Manager(Port);
-	Manager.Connect("192.168.0.104", "8303");
+	NetManager Manager(SrcPort);
+	Manager.Connect(IP, DstPort);
+
+	NetState State = NetState::NET_INIT;
 
 	int ServerFd = -1;
 	while (ServerFd == -1)
@@ -113,36 +148,59 @@ int main()
 
 		while (!glfwWindowShouldClose(Rend.GetWindowHandle()))
 		{
-			for (auto &Packet : Manager.Pull())
+			if (State == NetState::NET_INIT)
 			{
-				if (Packet->Type == GamePacketType::SERVER_ECHO_MESSAGE)
-					Message(std::string(Packet->Data.begin(), Packet->Data.end()), MessageSource::CHAT, MessageSeverity::INFO);
+				Manager.Push(new GamePacket{GamePacketType::CLIENT_NICKNAME, ServerFd, std::vector<uint8_t>(Nick.begin(), Nick.end())});
+				Manager.Push(Pack_ClientMove(280, ServerFd));
 
-				if (Packet->Type == GamePacketType::SERVER_MODEL_CREATE_BULK)
+				State = NetState::NET_GAME;
+			}
+
+			if (State == NetState::NET_GAME)
+			{
+				for (auto &Packet : Manager.Pull())
 				{
-					Message("Model create bulk", MessageSource::CLIENT, MessageSeverity::INFO);
-					Unpack_ServerModelCreateBulk(Packet, Rend);
-				}
+					if (Packet->Type == GamePacketType::SERVER_ECHO_MESSAGE)
+						Message(std::string(Packet->Data.begin(), Packet->Data.end()), MessageSource::CHAT, MessageSeverity::INFO);
 
-				if (Packet->Type == GamePacketType::SERVER_TARGET_CREATE_BULK)
-				{
-					Message("Target create bulk", MessageSource::CLIENT, MessageSeverity::INFO);
-					Unpack_ServerTargetCreateBulk(Packet, Rend);
-				}
+					if (Packet->Type == GamePacketType::SERVER_MODEL_CREATE_BULK)
+					{
+						Message("Model create bulk", MessageSource::CLIENT, MessageSeverity::INFO);
+						Unpack_ServerModelCreateBulk(Packet, Rend);
+					}
 
-				if (Packet->Type == GamePacketType::SERVER_TARGET_UPDATE_BULK)
-				{
-					Message("Target update bulk", MessageSource::CLIENT, MessageSeverity::INFO);
-					Unpack_ServerTargetUpdateBulk(Packet, Rend);
-				}
+					if (Packet->Type == GamePacketType::SERVER_MODEL_REMOVE_BULK)
+					{
+						Message("Model remove bulk", MessageSource::CLIENT, MessageSeverity::INFO);
+						Unpack_ServerModelRemoveBulk(Packet, Rend);
+					}
 
-				if (Packet->Type == GamePacketType::SERVER_TARGET_REMOVE_BULK)
-				{
-					Message("Target remove bulk", MessageSource::CLIENT, MessageSeverity::INFO);
-					Unpack_ServerTargetDeleteBulk(Packet, Rend);
-				}
+					if (Packet->Type == GamePacketType::SERVER_TARGET_CREATE_BULK)
+					{
+						Message("Target create bulk", MessageSource::CLIENT, MessageSeverity::INFO);
+						Unpack_ServerTargetCreateBulk(Packet, Rend);
+					}
 
-				delete Packet;
+					if (Packet->Type == GamePacketType::SERVER_TARGET_UPDATE_BULK)
+					{
+						Message("Target update bulk", MessageSource::CLIENT, MessageSeverity::INFO);
+						Unpack_ServerTargetUpdateBulk(Packet, Rend);
+					}
+
+					if (Packet->Type == GamePacketType::SERVER_TARGET_REMOVE_BULK)
+					{
+						Message("Target remove bulk", MessageSource::CLIENT, MessageSeverity::INFO);
+						Unpack_ServerTargetDeleteBulk(Packet, Rend);
+					}
+
+					if (Packet->Type == GamePacketType::SERVER_VIEW_UPDATE)
+					{
+						Message("View update", MessageSource::CLIENT, MessageSeverity::INFO);
+						Unpack_ServerViewUpdate(Packet, Rend);
+					}
+
+					delete Packet;
+				}
 			}
 
 			glfwPollEvents();
