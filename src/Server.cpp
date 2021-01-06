@@ -165,7 +165,7 @@ int main()
     std::vector<Entity *> CreateEntities;
     std::vector<Entity *> DeleteEntities;
 
-    TickingEntities.push_back(new EntityWall());
+    CreateEntities.push_back(new EntityWall());
 
     NetManager Manager("8303");
 
@@ -203,6 +203,19 @@ int main()
                 }
 
                 delete Packet;
+            }
+
+            for (auto pEntity : CreateEntities)
+            {
+                for (int Player : ConnectedPlayers)
+                {
+                    Manager.Push(Pack_ServerModelCreateBulk(TickingEntities, Player));
+                    Manager.Push(Pack_ServerTargetCreateBulk(TickingEntities, Player));
+                    Manager.Push(Pack_ServerTargetUpdateBulk(TickingEntities, Player));
+                }
+
+                TickingEntities.insert(TickingEntities.end(), CreateEntities.begin(), CreateEntities.end());
+                CreateEntities.clear();
             }
 
             for (auto pEntity : TickingEntities)
