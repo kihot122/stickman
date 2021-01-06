@@ -233,8 +233,12 @@ int main()
             }
 
             for (auto pEntity : DeleteEntities)
+            {
                 for (int Player : ConnectedPlayers)
                     Manager.Push(Pack_ServerTargetRemoveBulk(DeleteEntities, Player));
+
+                DeleteEntities.clear();
+            }
 
             for (int Player : ConnectedPlayers)
                 Manager.Push(Pack_ServerTargetUpdateBulk(UpdateEntities, Player));
