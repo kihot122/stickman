@@ -15,6 +15,11 @@ uint16_t Entity::GetTargetID()
     return TargetID;
 }
 
+bool Entity::IsDirty()
+{
+    return Dirty;
+}
+
 EntityWall::EntityWall()
 {
     Type = EntityType::WALL;
