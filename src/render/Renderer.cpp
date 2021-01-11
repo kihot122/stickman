@@ -1234,7 +1234,8 @@ void Renderer::RenderTargetDelete(uint16_t ID)
 
 void Renderer::RenderTargetUpdate(uint16_t ID, const glm::mat4 &Transform)
 {
-    mRenderTargets[ID].Transform = Transform;
+    if (mRenderTargets.contains(ID))
+        mRenderTargets[ID].Transform = Transform;
 }
 
 void Renderer::ViewTransformUpdate(const glm::mat4 &Transform)

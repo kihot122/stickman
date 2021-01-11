@@ -127,6 +127,8 @@ GamePacket *Pack_ServerTargetUpdateBulk(std::vector<Entity *> &pEntities, int De
 
 GamePacket *Pack_ServerTargetRemoveBulk(std::vector<Entity *> &pEntities, int DestinationFd)
 {
+    // Message("Target Remove Bulk " + std::to_string(pEntities[0]->GetTargetID()), MessageSource::SERVER, MessageSeverity::INFO);
+
     std::vector<uint8_t> PacketData;
 
     for (auto pEntity : pEntities)
@@ -160,8 +162,11 @@ GamePacket *Pack_ServerEchoMessage(GamePacket *Msg, std::map<int, std::string> &
     return new GamePacket{GamePacketType::SERVER_ECHO_MESSAGE, DestinationFd, PacketData};
 }
 
-int main()
+int main(int argc, char **argv)
 {
+    if (argc != 2)
+        return 1;
+
     std::vector<Entity *> TickingEntities;
     std::vector<Entity *> UpdateEntities;
     std::vector<Entity *> CreateEntities;
@@ -177,7 +182,7 @@ int main()
     CreateEntities.push_back(new EntityWall(7, 7, 15.0f, 1.0f, -15.0f, -30.0f, world, false));
     CreateEntities.push_back(new EntityWall(8, 8, 20.0f, 1.0f, -10.0f, -20.0f, world, false));
 
-    NetManager Manager("8303");
+    NetManager Manager(argv[1]);
 
     std::set<int> ConnectedPlayers;
     std::map<int, std::string> NicknameMapping;
@@ -230,14 +235,15 @@ int main()
             {
                 if (pEntity->IsDirty())
                     UpdateEntities.push_back(pEntity);
+            }
 
+            if (CreateEntities.size())
                 for (int Player : ConnectedPlayers)
                 {
                     Manager.Push(Pack_ServerModelCreateBulk(CreateEntities, Player));
                     Manager.Push(Pack_ServerTargetCreateBulk(CreateEntities, Player));
                     Manager.Push(Pack_ServerTargetUpdateBulk(CreateEntities, Player));
                 }
-            }
 
             TickingEntities.insert(TickingEntities.end(), CreateEntities.begin(), CreateEntities.end());
             CreateEntities.clear();
@@ -270,13 +276,12 @@ int main()
                 iter++;
             }
 
-            for (auto pEntity : DeleteEntities)
-            {
+            if (DeleteEntities.size())
                 for (int Player : ConnectedPlayers)
                     Manager.Push(Pack_ServerTargetRemoveBulk(DeleteEntities, Player));
 
+            for (auto pEntity : DeleteEntities)
                 delete pEntity;
-            }
 
             DeleteEntities.clear();
 

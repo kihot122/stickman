@@ -198,7 +198,7 @@ int main(int argc, char **argv)
 
 					if (Packet->Type == GamePacketType::SERVER_TARGET_UPDATE_BULK)
 					{
-						//Message("Target update bulk", MessageSource::CLIENT, MessageSeverity::INFO);
+						// Message("Target update bulk", MessageSource::CLIENT, MessageSeverity::INFO);
 						Unpack_ServerTargetUpdateBulk(Packet, Rend);
 					}
 
