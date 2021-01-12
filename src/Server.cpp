@@ -127,8 +127,6 @@ GamePacket *Pack_ServerTargetUpdateBulk(std::vector<Entity *> &pEntities, int De
 
 GamePacket *Pack_ServerTargetRemoveBulk(std::vector<Entity *> &pEntities, int DestinationFd)
 {
-    // Message("Target Remove Bulk " + std::to_string(pEntities[0]->GetTargetID()), MessageSource::SERVER, MessageSeverity::INFO);
-
     std::vector<uint8_t> PacketData;
 
     for (auto pEntity : pEntities)
@@ -223,7 +221,7 @@ int main(int argc, char **argv)
                                 Found = true;
                             }
 
-                    if (!Found)
+                    if (!Found and Unpack_ClientMove(Packet) == GLFW_KEY_R)
                         CreateEntities.push_back(new EntityPlayer(9, 9 + Packet->Socket, 1.0f, 2.0f, 20.0f, 20.0f, world, true, Packet->Socket));
                 }
                 delete Packet;
