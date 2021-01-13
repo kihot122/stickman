@@ -75,7 +75,7 @@ void NetManager::Send()
             {
                 Message(std::to_string(errno), MessageSource::NET, MessageSeverity::WARNING);
             }
-            if (SendSize != Size - Offset)
+            else if (SendSize != Size - Offset)
             {
                 Offset += SendSize;
                 goto S;
