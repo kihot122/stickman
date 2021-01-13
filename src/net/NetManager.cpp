@@ -68,9 +68,17 @@ void NetManager::Send()
             std::memcpy(Data + sizeof(GamePacketType), &static_cast<const uint64_t &>(Packet->Data.size()), sizeof(uint64_t));
             std::memcpy(Data + sizeof(GamePacketType) + sizeof(uint64_t), Packet->Data.data(), Packet->Data.size());
 
-            if (send(Packet->Socket, Data, Size, MSG_NOSIGNAL) <= 0)
+            size_t Offset = 0;
+        S:
+            size_t SendSize = send(Packet->Socket, Data + Offset, Size - Offset, MSG_NOSIGNAL);
+            if (SendSize <= 0)
             {
                 Message(std::to_string(errno), MessageSource::NET, MessageSeverity::WARNING);
+            }
+            if (SendSize != Size - Offset)
+            {
+                Offset += SendSize;
+                goto S;
             }
 
             delete[] Data;
@@ -82,6 +90,8 @@ void NetManager::Send()
 void NetManager::Receive(int SocketFd)
 {
     uint64_t Size;
+    size_t Offset;
+    size_t ReadSize;
     GamePacket *Packet;
 
     while (true)
@@ -89,14 +99,40 @@ void NetManager::Receive(int SocketFd)
         Packet = new GamePacket;
         Packet->Socket = SocketFd;
 
-        if (read(SocketFd, &Packet->Type, sizeof(GamePacketType)) <= 0)
+        Offset = 0;
+    R1:
+        ReadSize = read(SocketFd, &Packet->Type + Offset, sizeof(GamePacketType) - Offset);
+        if (ReadSize <= 0)
             break;
-        if (read(SocketFd, &Size, sizeof(uint64_t)) <= 0)
+        if (ReadSize != sizeof(GamePacketType) - Offset)
+        {
+            Offset += ReadSize;
+            goto R1;
+        }
+
+        Offset = 0;
+    R2:
+        ReadSize = read(SocketFd, &Size + Offset, sizeof(uint64_t) - Offset);
+        if (ReadSize <= 0)
             break;
+        if (ReadSize != sizeof(uint64_t) - Offset)
+        {
+            Offset += ReadSize;
+            goto R2;
+        }
+
         Packet->Data.resize(Size);
 
-        if (read(SocketFd, Packet->Data.data(), Size) <= 0)
+        Offset = 0;
+    R3:
+        ReadSize = read(SocketFd, Packet->Data.data() + Offset, Size - Offset);
+        if (ReadSize <= 0)
             break;
+        if (ReadSize != Size - Offset)
+        {
+            Offset += ReadSize;
+            goto R3;
+        }
 
         ReceiveQueue.enqueue(Packet);
     }
